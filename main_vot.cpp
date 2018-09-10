@@ -123,7 +123,6 @@ int main(int argc, char *argv[])
     // if groundtruth.txt is used use intersection over union (IOU) to calculate tracker accuracy
     std::ifstream groundtruth_stream;
     if (region.compare("groundtruth.txt") == 0) {
-        std::cout << region << std::endl;
         groundtruth_stream.open(region.c_str());
         std::string line;
         std::getline(groundtruth_stream, line);

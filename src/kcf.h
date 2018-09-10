@@ -3,19 +3,22 @@
 
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include <memory>
 #include "fhog.hpp"
 
 #ifdef CUFFT
-  #include "complexmat.cuh"
-  #include "cuda_functions.cuh"
-  #include "cuda/cuda_error_check.cuh"
-  #include <cuda_runtime.h>
+#include "complexmat.cuh"
+#include "cuda_functions.cuh"
+#include "cuda/cuda_error_check.cuh"
+#include <cuda_runtime.h>
 #else
-  #include "complexmat.hpp"
+#include "complexmat.hpp"
 #endif
 
 #include "cnfeat.hpp"
 #include "fft.h"
+#include "threadctx.hpp"
+#include "pragmas.h"
 
 struct BBox_c
 {
@@ -43,17 +46,9 @@ struct BBox_c
 
     inline cv::Rect get_rect()
     {
-        return cv::Rect(cx-w/2., cy-h/2., w, h);
+        return cv::Rect(int(cx-w/2.), int(cy-h/2.), int(w), int(h));
     }
 
-};
-
-struct Scale_var
-{
-    float *xf_sqr_norm = nullptr, *yf_sqr_norm = nullptr;
-#ifdef CUFFT
-    float *xf_sqr_norm_d = nullptr, *yf_sqr_norm_d = nullptr, *gauss_corr_res = nullptr;
-#endif
 };
 
 class KCF_Tracker
@@ -76,7 +71,7 @@ public:
 #else
     bool m_use_big_batch {false};
 #endif
-#ifdef BIG_BATCH
+#ifdef CUFFT
     bool m_use_cuda {true};
 #else
     bool m_use_cuda {false};
@@ -110,11 +105,10 @@ private:
     bool p_resize_image = false;
     bool p_fit_to_pw2 = false;
 
-    bool first = true;
-
     const double p_downscale_factor = 0.5;
     double p_scale_factor_x = 1;
     double p_scale_factor_y = 1;
+    double p_floating_error = 0.0001;
 
     double p_padding = 1.5;
     double p_output_sigma_factor = 0.1;
@@ -123,7 +117,7 @@ private:
     double p_lambda = 1e-4;         //regularization in learning step
     double p_interp_factor = 0.02;  //def = 0.02, linear interpolation factor for adaptation
     int p_cell_size = 4;            //4 for hog (= bin_size)
-    int p_windows_size[2];
+    cv::Size p_windows_size;
     int p_num_scales {7};
     double p_scale_step = 1.02;
     double p_current_scale = 1.;
@@ -134,7 +128,11 @@ private:
     int p_num_of_feats;
     int p_roi_height, p_roi_width;
 
-    std::vector<Scale_var> scale_vars;
+    std::list<std::unique_ptr<ThreadCtx>> p_threadctxs;
+
+    //CUDA compability
+    cv::Mat p_rot_labels;
+    DynMem p_rot_labels_data;
 
     //model
     ComplexMat p_yf;
@@ -142,15 +140,17 @@ private:
     ComplexMat p_model_alphaf_num;
     ComplexMat p_model_alphaf_den;
     ComplexMat p_model_xf;
+    ComplexMat p_xf;
     //helping functions
+    void scale_track(ThreadCtx & vars, cv::Mat & input_rgb, cv::Mat & input_gray, double scale);
     cv::Mat get_subwindow(const cv::Mat & input, int cx, int cy, int size_x, int size_y);
     cv::Mat gaussian_shaped_labels(double sigma, int dim1, int dim2);
-    ComplexMat gaussian_correlation(struct Scale_var &vars, const ComplexMat & xf, const ComplexMat & yf, double sigma, bool auto_correlation = false);
+    void gaussian_correlation(struct ThreadCtx &vars, const ComplexMat & xf, const ComplexMat & yf, double sigma, bool auto_correlation = false);
     cv::Mat circshift(const cv::Mat & patch, int x_rot, int y_rot);
     cv::Mat cosine_window_function(int dim1, int dim2);
-    std::vector<cv::Mat> get_features(cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, double scale = 1.);
+    void get_features(cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, ThreadCtx & vars, double scale = 1.);
     cv::Point2f sub_pixel_peak(cv::Point & max_loc, cv::Mat & response);
-    double sub_grid_scale(std::vector<double> & responses, int index = -1);
+    double sub_grid_scale(int index = -1);
 
 };
 
