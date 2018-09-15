@@ -14,11 +14,9 @@ void FftOpencv::set_window(const cv::Mat &window)
     m_window = window;
 }
 
-void FftOpencv::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr,
-                        cudaStream_t stream)
+void FftOpencv::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr)
 {
     (void)real_input_arr;
-    (void)stream;
 
     cv::Mat tmp;
     cv::dft(real_input, tmp, cv::DFT_COMPLEX_OUTPUT);
@@ -27,11 +25,10 @@ void FftOpencv::forward(const cv::Mat &real_input, ComplexMat &complex_result, f
 }
 
 void FftOpencv::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex_result, cv::Mat &fw_all,
-                               float *real_input_arr, cudaStream_t stream)
+                               float *real_input_arr)
 {
     (void)real_input_arr;
     (void)fw_all;
-    (void)stream;
 
     uint n_channels = uint(patch_feats.size());
     for (uint i = 0; i < n_channels; ++i) {
@@ -42,10 +39,9 @@ void FftOpencv::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &com
     return;
 }
 
-void FftOpencv::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr, cudaStream_t stream)
+void FftOpencv::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr)
 {
     (void)real_result_arr;
-    (void)stream;
 
     if (complex_input.n_channels == 1) {
         cv::dft(complex_input.to_cv_mat(), real_result, cv::DFT_INVERSE | cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);

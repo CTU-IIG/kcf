@@ -25,6 +25,7 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 
         CufftErrorCheck(cufftPlanMany(&plan_f_all_scales, rank, n, inembed, istride, idist, onembed, ostride, odist,
                                       CUFFT_R2C, howmany));
+        CufftErrorCheck(cufftSetStream(plan_f_all_scales, cudaStreamPerThread));
     }
 #endif
     // FFT forward window one scale
@@ -38,6 +39,7 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 
         CufftErrorCheck(
             cufftPlanMany(&plan_fw, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_R2C, howmany));
+        CufftErrorCheck(cufftSetStream(plan_fw, cudaStreamPerThread));
     }
 #ifdef BIG_BATCH
     // FFT forward window all scales all feats
@@ -51,6 +53,7 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 
         CufftErrorCheck(cufftPlanMany(&plan_fw_all_scales, rank, n, inembed, istride, idist, onembed, ostride, odist,
                                       CUFFT_R2C, howmany));
+        CufftErrorCheck(cufftSetStream(plan_fw_all_scales, cudaStreamPerThread));
     }
 #endif
     // FFT inverse one scale
@@ -64,6 +67,7 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 
         CufftErrorCheck(cufftPlanMany(&plan_i_features, rank, n, inembed, istride, idist, onembed, ostride, odist,
                                       CUFFT_C2R, howmany));
+        CufftErrorCheck(cufftSetStream(plan_i_features, cudaStreamPerThread));
     }
     // FFT inverse all scales
 #ifdef BIG_BATCH
@@ -77,6 +81,7 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 
         CufftErrorCheck(cufftPlanMany(&plan_i_features_all_scales, rank, n, inembed, istride, idist, onembed, ostride,
                                       odist, CUFFT_C2R, howmany));
+        CufftErrorCheck(cufftSetStream(plan_i_features_all_scales, cudaStreamPerThread));
     }
 #endif
     // FFT inverse one channel one scale
@@ -90,6 +95,7 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 
         CufftErrorCheck(
             cufftPlanMany(&plan_i_1ch, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_C2R, howmany));
+        CufftErrorCheck(cufftSetStream(plan_i_1ch, cudaStreamPerThread));
     }
 #ifdef BIG_BATCH
     // FFT inverse one channel all scales
@@ -103,6 +109,7 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 
         CufftErrorCheck(cufftPlanMany(&plan_i_1ch_all_scales, rank, n, inembed, istride, idist, onembed, ostride, odist,
                                       CUFFT_C2R, howmany));
+        CufftErrorCheck(cufftSetStream(plan_i_1ch_all_scales, cudaStreamPerThread));
     }
 #endif
 }
@@ -112,7 +119,7 @@ void cuFFT::set_window(const cv::Mat &window)
     m_window = window;
 }
 
-void cuFFT::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr, cudaStream_t stream)
+void cuFFT::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr)
 {
     if (BIG_BATCH_MODE && real_input.rows == int(m_height * m_num_of_scales)) {
         CufftErrorCheck(cufftExecR2C(plan_f_all_scales, reinterpret_cast<cufftReal *>(real_input_arr),
@@ -120,17 +127,16 @@ void cuFFT::forward(const cv::Mat &real_input, ComplexMat &complex_result, float
     } else {
         NORMAL_OMP_CRITICAL
         {
-            CufftErrorCheck(cufftSetStream(plan_f, stream));
             CufftErrorCheck(
                 cufftExecR2C(plan_f, reinterpret_cast<cufftReal *>(real_input_arr), complex_result.get_p_data()));
-            cudaStreamSynchronize(stream);
+            cudaStreamSynchronize(cudaStreamPerThread);
         }
     }
     return;
 }
 
 void cuFFT::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex_result, cv::Mat &fw_all,
-                           float *real_input_arr, cudaStream_t stream)
+                           float *real_input_arr)
 {
     int n_channels = int(patch_feats.size());
 
@@ -148,16 +154,15 @@ void cuFFT::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex
         }
         NORMAL_OMP_CRITICAL
         {
-            CufftErrorCheck(cufftSetStream(plan_fw, stream));
             CufftErrorCheck(
                 cufftExecR2C(plan_fw, reinterpret_cast<cufftReal *>(real_input_arr), complex_result.get_p_data()));
-            cudaStreamSynchronize(stream);
+            cudaStreamSynchronize(cudaStreamPerThread);
         }
     }
     return;
 }
 
-void cuFFT::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr, cudaStream_t stream)
+void cuFFT::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr)
 {
     int n_channels = complex_input.n_channels;
     cufftComplex *in = reinterpret_cast<cufftComplex *>(complex_input.get_p_data());
@@ -165,28 +170,27 @@ void cuFFT::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real
     if (n_channels == 1) {
         NORMAL_OMP_CRITICAL
         {
-            CufftErrorCheck(cufftSetStream(plan_i_1ch, stream));
             CufftErrorCheck(cufftExecC2R(plan_i_1ch, in, reinterpret_cast<cufftReal *>(real_result_arr)));
-            cudaStreamSynchronize(stream);
+            cudaStreamSynchronize(cudaStreamPerThread);
         }
         real_result = real_result / (m_width * m_height);
         return;
     } else if (n_channels == int(m_num_of_scales)) {
         CufftErrorCheck(cufftExecC2R(plan_i_1ch_all_scales, in, reinterpret_cast<cufftReal *>(real_result_arr)));
-        cudaStreamSynchronize(stream);
+        cudaStreamSynchronize(cudaStreamPerThread);
 
         real_result = real_result / (m_width * m_height);
         return;
     } else if (n_channels == int(m_num_of_feats) * int(m_num_of_scales)) {
         CufftErrorCheck(cufftExecC2R(plan_i_features_all_scales, in, reinterpret_cast<cufftReal *>(real_result_arr)));
+        cudaStreamSynchronize(cudaStreamPerThread);
         return;
     }
     NORMAL_OMP_CRITICAL
     {
-        CufftErrorCheck(cufftSetStream(plan_i_features, stream));
         CufftErrorCheck(cufftExecC2R(plan_i_features, in, reinterpret_cast<cufftReal *>(real_result_arr)));
 #if defined(OPENMP) && !defined(BIG_BATCH)
-        CudaSafeCall(cudaStreamSynchronize(stream));
+        CudaSafeCall(cudaStreamSynchronize(cudaStreamPerThread));
 #endif
     }
     return;

@@ -38,12 +38,12 @@ __global__ void gaussian_correlation_kernel(float *data_in, float *data_out, flo
 }
 
 void cuda_gaussian_correlation(float *data_in, float *data_out, float *xf_sqr_norm, float *yf_sqr_norm, double sigma,
-                               int n_channels, int n_scales, int rows, int cols, cudaStream_t stream)
+                               int n_channels, int n_scales, int rows, int cols)
 {
     dim3 threadsPerBlock((n_channels / n_scales) / 2);
     dim3 numBlocks(n_scales, rows * cols);
 
-    gaussian_correlation_kernel<<<numBlocks, threadsPerBlock, ((n_channels / n_scales) / 2) * sizeof(float), stream>>>(
+    gaussian_correlation_kernel<<<numBlocks, threadsPerBlock, ((n_channels / n_scales) / 2) * sizeof(float)>>>(
         data_in, data_out, xf_sqr_norm, yf_sqr_norm, rows, cols, n_channels / n_scales, sigma);
     CudaCheckError();
 

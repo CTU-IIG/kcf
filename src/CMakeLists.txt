@@ -78,7 +78,7 @@ IF(use_cuda)
 
   set(CUDA_ARCH_LIST "Auto" CACHE STRING "CUDA GPU architecture for building the code")
   CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS ${CUDA_ARCH_LIST})
-  list( APPEND CUDA_NVCC_FLAGS -O3 -std=c++11 ${ARCH_FLAGS}) # --gpu-architecture sm_62 )
+  list( APPEND CUDA_NVCC_FLAGS -O3 -std=c++11 ${ARCH_FLAGS} --default-stream per-thread) # --gpu-architecture sm_62 )
   find_cuda_helper_libs(cufftw)
   IF(FFT STREQUAL "cuFFT")
   add_subdirectory(cuda)

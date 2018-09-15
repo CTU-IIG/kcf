@@ -205,22 +205,17 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     // window weights, i.e. labels
     fft.forward(
         gaussian_shaped_labels(p_output_sigma, p_roi.width, p_roi.height), p_yf,
-        m_use_cuda ? p_rot_labels_data.deviceMem() : nullptr, p_threadctxs.front().stream);
+        m_use_cuda ? p_rot_labels_data.deviceMem() : nullptr);
     DEBUG_PRINTM(p_yf);
 
     // obtain a sub-window for training initial model
     std::vector<cv::Mat> patch_feats = get_features(input_rgb, input_gray, p_pose.cx, p_pose.cy,
                                                     p_windows_size.width, p_windows_size.height);
     fft.forward_window(patch_feats, p_model_xf, p_threadctxs.front().fw_all,
-                       m_use_cuda ? p_threadctxs.front().data_features.deviceMem() : nullptr,
-                       p_threadctxs.front().stream);
+                       m_use_cuda ? p_threadctxs.front().data_features.deviceMem() : nullptr);
     DEBUG_PRINTM(p_model_xf);
 #if !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
     p_threadctxs.front().model_xf = p_model_xf;
-    p_threadctxs.front().model_xf.set_stream(p_threadctxs.front().stream);
-    p_yf.set_stream(p_threadctxs.front().stream);
-    p_model_xf.set_stream(p_threadctxs.front().stream);
-    p_xf.set_stream(p_threadctxs.front().stream);
 #endif
 
     if (m_use_linearkernel) {
@@ -248,9 +243,7 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 #if  !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
     for (auto it = p_threadctxs.begin(); it != p_threadctxs.end(); ++it) {
         it->model_xf = p_model_xf;
-        it->model_xf.set_stream(it->stream);
         it->model_alphaf = p_model_alphaf;
-        it->model_alphaf.set_stream(it->stream);
     }
 #endif
 }
@@ -407,7 +400,7 @@ void KCF_Tracker::track(cv::Mat &img)
                                                     p_windows_size.width, p_windows_size.height,
                                                     p_current_scale);
     fft.forward_window(patch_feats, p_xf, ctx.fw_all,
-                       m_use_cuda ? ctx.data_features.deviceMem() : nullptr, ctx.stream);
+                       m_use_cuda ? ctx.data_features.deviceMem() : nullptr);
 
     // subsequent frames, interpolate model
     p_model_xf = p_model_xf * float((1. - p_interp_factor)) + p_xf * float(p_interp_factor);
@@ -435,9 +428,7 @@ void KCF_Tracker::track(cv::Mat &img)
 #if  !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
     for (auto it = p_threadctxs.begin(); it != p_threadctxs.end(); ++it) {
         it->model_xf = p_model_xf;
-        it->model_xf.set_stream(it->stream);
         it->model_alphaf = p_model_alphaf;
-        it->model_alphaf.set_stream(it->stream);
     }
 #endif
 }
@@ -458,14 +449,13 @@ void KCF_Tracker::scale_track(ThreadCtx &vars, cv::Mat &input_rgb, cv::Mat &inpu
                                    this->p_current_scale * vars.scale);
     }
 
-    fft.forward_window(patch_feats, vars.zf, vars.fw_all, m_use_cuda ? vars.data_features.deviceMem() : nullptr,
-                       vars.stream);
+    fft.forward_window(patch_feats, vars.zf, vars.fw_all, m_use_cuda ? vars.data_features.deviceMem() : nullptr);
     DEBUG_PRINTM(vars.zf);
 
     if (m_use_linearkernel) {
         vars.kzf = BIG_BATCH_MODE ? (vars.zf.mul2(this->p_model_alphaf)).sum_over_channels()
                                    : (p_model_alphaf * vars.zf).sum_over_channels();
-        fft.inverse(vars.kzf, vars.response, m_use_cuda ? vars.data_i_1ch.deviceMem() : nullptr, vars.stream);
+        fft.inverse(vars.kzf, vars.response, m_use_cuda ? vars.data_i_1ch.deviceMem() : nullptr);
     } else {
 #if !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
         gaussian_correlation(vars, vars.zf, vars.model_xf, this->p_kernel_sigma);
@@ -476,7 +466,7 @@ void KCF_Tracker::scale_track(ThreadCtx &vars, cv::Mat &input_rgb, cv::Mat &inpu
         DEBUG_PRINTM(vars.kzf);
         vars.kzf = BIG_BATCH_MODE ? vars.kzf.mul(this->p_model_alphaf) : this->p_model_alphaf * vars.kzf;
 #endif
-        fft.inverse(vars.kzf, vars.response, m_use_cuda ? vars.data_i_1ch.deviceMem() : nullptr, vars.stream);
+        fft.inverse(vars.kzf, vars.response, m_use_cuda ? vars.data_i_1ch.deviceMem() : nullptr);
     }
 
     DEBUG_PRINTM(vars.response);
@@ -742,11 +732,11 @@ void KCF_Tracker::gaussian_correlation(struct ThreadCtx &vars, const ComplexMat 
     }
     vars.xyf = auto_correlation ? xf.sqr_mag() : xf.mul2(yf.conj());
     DEBUG_PRINTM(vars.xyf);
-    fft.inverse(vars.xyf, vars.ifft2_res, m_use_cuda ? vars.data_i_features.deviceMem() : nullptr, vars.stream);
+    fft.inverse(vars.xyf, vars.ifft2_res, m_use_cuda ? vars.data_i_features.deviceMem() : nullptr);
 #ifdef CUFFT
     cuda_gaussian_correlation(vars.data_i_features.deviceMem(), vars.gauss_corr_res.deviceMem(),
                               vars.xf_sqr_norm.deviceMem(), vars.xf_sqr_norm.deviceMem(), sigma, xf.n_channels,
-                              xf.n_scales, p_roi.height, p_roi.width, vars.stream);
+                              xf.n_scales, p_roi.height, p_roi.width);
 #else
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
     DEBUG_PRINTM(vars.ifft2_res);
@@ -785,8 +775,7 @@ void KCF_Tracker::gaussian_correlation(struct ThreadCtx &vars, const ComplexMat 
     }
 #endif
     DEBUG_PRINTM(vars.in_all);
-    fft.forward(vars.in_all, auto_correlation ? vars.kf : vars.kzf, m_use_cuda ? vars.gauss_corr_res.deviceMem() : nullptr,
-                vars.stream);
+    fft.forward(vars.in_all, auto_correlation ? vars.kf : vars.kzf, m_use_cuda ? vars.gauss_corr_res.deviceMem() : nullptr);
     return;
 }
 

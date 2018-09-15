@@ -8,10 +8,6 @@
 #include "complexmat.cuh"
 #else
 #include "complexmat.hpp"
-#ifndef CUFFTW
-// For compatibility reasons between CuFFT and FFTW, OpenCVfft versions.
-typedef int *cudaStream_t;
-#endif
 #endif
 
 struct ThreadCtx {
@@ -23,10 +19,6 @@ struct ThreadCtx {
         this->yf_sqr_norm = DynMem(sizeof(float));
 
         uint cells_size = roi.width * roi.height * sizeof(float);
-
-#if  !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
-        CudaSafeCall(cudaStreamCreate(&this->stream));
-#endif
 
 #if defined(CUFFT) || defined(FFTW)
         this->gauss_corr_res = DynMem(cells_size * num_of_scales);
@@ -49,9 +41,9 @@ struct ThreadCtx {
         this->response = cv::Mat(roi, CV_32FC(num_of_scales), this->data_i_1ch.hostMem());
 
 #ifdef CUFFT
-        this->zf.create(roi.height, width_freq, num_of_feats, num_of_scales, this->stream);
-        this->kzf.create(roi.height, width_freq, num_of_scales, this->stream);
-        this->kf.create(roi.height, width_freq, num_of_scales, this->stream);
+        this->zf.create(roi.height, width_freq, num_of_feats, num_of_scales);
+        this->kzf.create(roi.height, width_freq, num_of_scales);
+        this->kf.create(roi.height, width_freq, num_of_scales);
 #else
         this->zf.create(roi.height, width_freq, num_of_feats, num_of_scales);
         this->kzf.create(roi.height, width_freq, num_of_scales);
@@ -67,12 +59,6 @@ struct ThreadCtx {
 #endif
     }
     ThreadCtx(ThreadCtx &&) = default;
-    ~ThreadCtx()
-    {
-#if  !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
-        CudaSafeCall(cudaStreamDestroy(this->stream));
-#endif
-    }
 
     const double scale;
 #ifdef ASYNC
@@ -89,7 +75,6 @@ struct ThreadCtx {
     DynMem gauss_corr_res, data_features;
 
     // CuFFT variables
-    cudaStream_t stream = nullptr;
     ComplexMat model_alphaf, model_xf;
 
     // Variables used during non big batch mode and in big batch mode with ThreadCtx in p_threadctxs in kcf  on zero index.

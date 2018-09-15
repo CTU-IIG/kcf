@@ -172,10 +172,9 @@ void Fftw::set_window(const cv::Mat &window)
     m_window = window;
 }
 
-void Fftw::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr, cudaStream_t stream)
+void Fftw::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr)
 {
     (void)real_input_arr;
-    (void)stream;
 
     if (BIG_BATCH_MODE && real_input.rows == int(m_height * m_num_of_scales)) {
         fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
@@ -188,10 +187,9 @@ void Fftw::forward(const cv::Mat &real_input, ComplexMat &complex_result, float 
 }
 
 void Fftw::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex_result, cv::Mat &fw_all,
-                          float *real_input_arr, cudaStream_t stream)
+                          float *real_input_arr)
 {
     (void)real_input_arr;
-    (void)stream;
 
     int n_channels = int(patch_feats.size());
     for (int i = 0; i < n_channels; ++i) {
@@ -209,10 +207,9 @@ void Fftw::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex_
     return;
 }
 
-void Fftw::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr, cudaStream_t stream)
+void Fftw::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr)
 {
     (void)real_result_arr;
-    (void)stream;
 
     int n_channels = complex_input.n_channels;
     fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_input.get_p_data());
