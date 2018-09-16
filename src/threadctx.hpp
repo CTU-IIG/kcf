@@ -3,6 +3,7 @@
 
 #include <future>
 #include "dynmem.hpp"
+#include "kcf.h"
 
 #ifdef CUFFT
 #include "complexmat.cuh"
@@ -16,10 +17,8 @@ struct ThreadCtx {
   public:
     ThreadCtx(cv::Size roi, uint num_of_feats, double scale, uint num_of_scales)
         : scale(scale)
+        , gc(num_of_scales)
     {
-        this->xf_sqr_norm = DynMem(num_of_scales * sizeof(float));
-        this->yf_sqr_norm = DynMem(sizeof(float));
-
         uint cells_size = roi.width * roi.height * sizeof(float);
 
 #if defined(CUFFT) || defined(FFTW)
@@ -67,7 +66,14 @@ struct ThreadCtx {
     std::future<void> async_res;
 #endif
 
-    DynMem xf_sqr_norm, yf_sqr_norm;
+    class gaussian_correlation_data {
+        friend void KCF_Tracker::gaussian_correlation(struct ThreadCtx &vars, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation);
+        DynMem xf_sqr_norm;
+        DynMem yf_sqr_norm{sizeof(float)};
+
+      public:
+        gaussian_correlation_data(uint num_of_scales) : xf_sqr_norm(num_of_scales * sizeof(float)) {}
+    } gc;
 
     cv::Mat in_all, fw_all, ifft2_res, response;
     ComplexMat zf, kzf, kf, xyf;

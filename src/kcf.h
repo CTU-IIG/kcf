@@ -20,7 +20,7 @@
 #include "pragmas.h"
 
 class Kcf_Tracker_Private;
-class ThreadCtx;
+struct ThreadCtx;
 
 struct BBox_c
 {
