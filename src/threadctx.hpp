@@ -15,7 +15,7 @@ class KCF_Tracker;
 
 struct ThreadCtx {
   public:
-    ThreadCtx(cv::Size roi, uint num_of_feats, double scale, uint num_of_scales)
+    ThreadCtx(cv::Size roi, uint num_channels, double scale, uint num_of_scales)
         : scale(scale)
         , gc(num_of_scales)
     {
@@ -23,30 +23,30 @@ struct ThreadCtx {
 
 #if defined(CUFFT) || defined(FFTW)
         this->gauss_corr_res = DynMem(cells_size * num_of_scales);
-        this->data_features = DynMem(cells_size * num_of_feats);
+        this->data_features = DynMem(cells_size * num_channels);
 
         uint width_freq = roi.width / 2 + 1;
 
         this->in_all = cv::Mat(roi.height * num_of_scales, roi.width, CV_32F, this->gauss_corr_res.hostMem());
-        this->fw_all = cv::Mat(roi.height * num_of_feats, roi.width, CV_32F, this->data_features.hostMem());
+        this->fw_all = cv::Mat(roi.height * num_channels, roi.width, CV_32F, this->data_features.hostMem());
 #else
         uint width_freq = roi.width;
 
         this->in_all = cv::Mat(roi, CV_32F);
 #endif
 
-        this->data_i_features = DynMem(cells_size * num_of_feats);
+        this->data_i_features = DynMem(cells_size * num_channels);
         this->data_i_1ch = DynMem(cells_size * num_of_scales);
 
-        this->ifft2_res = cv::Mat(roi, CV_32FC(num_of_feats), this->data_i_features.hostMem());
+        this->ifft2_res = cv::Mat(roi, CV_32FC(num_channels), this->data_i_features.hostMem());
         this->response = cv::Mat(roi, CV_32FC(num_of_scales), this->data_i_1ch.hostMem());
 
 #ifdef CUFFT
-        this->zf.create(roi.height, width_freq, num_of_feats, num_of_scales);
+        this->zf.create(roi.height, width_freq, num_channels, num_of_scales);
         this->kzf.create(roi.height, width_freq, num_of_scales);
         this->kf.create(roi.height, width_freq, num_of_scales);
 #else
-        this->zf.create(roi.height, width_freq, num_of_feats, num_of_scales);
+        this->zf.create(roi.height, width_freq, num_channels, num_of_scales);
         this->kzf.create(roi.height, width_freq, num_of_scales);
         this->kf.create(roi.height, width_freq, num_of_scales);
 #endif
