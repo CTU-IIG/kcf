@@ -10,6 +10,8 @@
 #include "complexmat.hpp"
 #endif
 
+class KCF_Tracker;
+
 struct ThreadCtx {
   public:
     ThreadCtx(cv::Size roi, uint num_of_feats, double scale, uint num_of_scales)

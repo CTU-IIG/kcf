@@ -2,6 +2,7 @@
 #include <numeric>
 #include <thread>
 #include <algorithm>
+#include "threadctx.hpp"
 
 #ifdef FFTW
 #include "fft_fftw.h"
@@ -40,18 +41,24 @@ void clamp2(T& n, const T& lower, const T& upper)
     n = std::max(lower, std::min(n, upper));
 }
 
+class Kcf_Tracker_Private {
+    friend KCF_Tracker;
+    std::vector<ThreadCtx> threadctxs;
+};
+
 KCF_Tracker::KCF_Tracker(double padding, double kernel_sigma, double lambda, double interp_factor,
                          double output_sigma_factor, int cell_size)
     : fft(*new FFT()), p_padding(padding), p_output_sigma_factor(output_sigma_factor), p_kernel_sigma(kernel_sigma),
-      p_lambda(lambda), p_interp_factor(interp_factor), p_cell_size(cell_size)
+      p_lambda(lambda), p_interp_factor(interp_factor), p_cell_size(cell_size), d(*new Kcf_Tracker_Private)
 {
 }
 
-KCF_Tracker::KCF_Tracker() : fft(*new FFT()) {}
+KCF_Tracker::KCF_Tracker() : fft(*new FFT()), d(*new Kcf_Tracker_Private) {}
 
 KCF_Tracker::~KCF_Tracker()
 {
     delete &fft;
+    delete &d;
 }
 
 void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int fit_size_y)
@@ -211,11 +218,11 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     // obtain a sub-window for training initial model
     std::vector<cv::Mat> patch_feats = get_features(input_rgb, input_gray, p_pose.cx, p_pose.cy,
                                                     p_windows_size.width, p_windows_size.height);
-    fft.forward_window(patch_feats, p_model_xf, p_threadctxs.front().fw_all,
-                       m_use_cuda ? p_threadctxs.front().data_features.deviceMem() : nullptr);
+    fft.forward_window(patch_feats, p_model_xf, d.threadctxs.front().fw_all,
+                       m_use_cuda ? d.threadctxs.front().data_features.deviceMem() : nullptr);
     DEBUG_PRINTM(p_model_xf);
 #if !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
-    p_threadctxs.front().model_xf = p_model_xf;
+    d.threadctxs.front().model_xf = p_model_xf;
 #endif
 
     if (m_use_linearkernel) {
@@ -225,15 +232,14 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     } else {
         // Kernel Ridge Regression, calculate alphas (in Fourier domain)
 #if  !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
-        gaussian_correlation(p_threadctxs.front(), p_threadctxs.front().model_xf, p_threadctxs.front().model_xf,
-                             p_kernel_sigma, true);
+        gaussian_correlation(d.threadctxs.front(), d.threadctxs.front().model_xf, d.threadctxs.front().model_xf, p_kernel_sigma, true);
 #else
-        gaussian_correlation(p_threadctxs.front(), p_model_xf, p_model_xf, p_kernel_sigma, true);
+        gaussian_correlation(d.threadctxs.front(), p_model_xf, p_model_xf, p_kernel_sigma, true);
 #endif
-        DEBUG_PRINTM(p_threadctxs.front().kf);
-        p_model_alphaf_num = p_yf * p_threadctxs.front().kf;
+        DEBUG_PRINTM(d.threadctxs.front().kf);
+        p_model_alphaf_num = p_yf * d.threadctxs.front().kf;
         DEBUG_PRINTM(p_model_alphaf_num);
-        p_model_alphaf_den = p_threadctxs.front().kf * (p_threadctxs.front().kf + float(p_lambda));
+        p_model_alphaf_den = d.threadctxs.front().kf * (d.threadctxs.front().kf + float(p_lambda));
         DEBUG_PRINTM(p_model_alphaf_den);
     }
     p_model_alphaf = p_model_alphaf_num / p_model_alphaf_den;
@@ -241,7 +247,7 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     //        p_model_alphaf = p_yf / (kf + p_lambda);   //equation for fast training
 
 #if  !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
-    for (auto it = p_threadctxs.begin(); it != p_threadctxs.end(); ++it) {
+    for (auto it = d.threadctxs.begin(); it != d.threadctxs.end(); ++it) {
         it->model_xf = p_model_xf;
         it->model_alphaf = p_model_alphaf;
     }
@@ -323,22 +329,22 @@ void KCF_Tracker::track(cv::Mat &img)
     cv::Mat *max_response_map = nullptr;
 
 #ifdef ASYNC
-    for (auto &it : p_threadctxs)
+    for (auto &it : d.threadctxs)
         it.async_res = std::async(std::launch::async, [this, &input_gray, &input_rgb, &it]() -> void {
             scale_track(it, input_rgb, input_gray);
         });
-    for (auto const &it : p_threadctxs)
+    for (auto const &it : d.threadctxs)
         it.async_res.wait();
 
 #else  // !ASYNC
     // FIXME: Iterate correctly in big batch mode - perhaps have only one element in the list
     NORMAL_OMP_PARALLEL_FOR
-    for (uint i = 0; i < p_threadctxs.size(); ++i)
-        scale_track(p_threadctxs[i], input_rgb, input_gray);
+    for (uint i = 0; i < d.threadctxs.size(); ++i)
+        scale_track(d.threadctxs[i], input_rgb, input_gray);
 #endif
 
 #ifndef BIG_BATCH
-    for (auto &it : p_threadctxs) {
+    for (auto &it : d.threadctxs) {
         if (it.max_response > max_response) {
             max_response = it.max_response;
             max_response_pt = &it.max_loc;
@@ -349,11 +355,11 @@ void KCF_Tracker::track(cv::Mat &img)
 #else
     // FIXME: Iterate correctly in big batch mode - perhaps have only one element in the list
     for (uint j = 0; j < p_scales.size(); ++j) {
-        if (p_threadctxs[0].max_responses[j] > max_response) {
-            max_response = p_threadctxs[0].max_responses[j];
-            max_response_pt = &p_threadctxs[0].max_locs[j];
-            max_response_map = &p_threadctxs[0].response_maps[j];
-            max = &p_threadctxs[0];
+        if (d.threadctxs[0].max_responses[j] > max_response) {
+            max_response = d.threadctxs[0].max_responses[j];
+            max_response_pt = &d.threadctxs[0].max_locs[j];
+            max_response_map = &d.threadctxs[0].response_maps[j];
+            max = &d.threadctxs[0];
         }
     }
 #endif
@@ -386,15 +392,15 @@ void KCF_Tracker::track(cv::Mat &img)
 
     // sub grid scale interpolation
     if (m_use_subgrid_scale) {
-        auto it = std::find_if(p_threadctxs.begin(), p_threadctxs.end(), [max](ThreadCtx &ctx) { return &ctx == max; });
-        p_current_scale *= sub_grid_scale(std::distance(p_threadctxs.begin(), it));
+        auto it = std::find_if(d.threadctxs.begin(), d.threadctxs.end(), [max](ThreadCtx &ctx) { return &ctx == max; });
+        p_current_scale *= sub_grid_scale(std::distance(d.threadctxs.begin(), it));
     } else {
         p_current_scale *= max->scale;
     }
 
     clamp2(p_current_scale, p_min_max_scale[0], p_min_max_scale[1]);
 
-    ThreadCtx &ctx = p_threadctxs.front();
+    ThreadCtx &ctx = d.threadctxs.front();
     // obtain a subwindow for training at newly estimated target position
     std::vector<cv::Mat> patch_feats = get_features(input_rgb, input_gray, p_pose.cx, p_pose.cy,
                                                     p_windows_size.width, p_windows_size.height,
@@ -426,7 +432,7 @@ void KCF_Tracker::track(cv::Mat &img)
     p_model_alphaf = p_model_alphaf_num / p_model_alphaf_den;
 
 #if  !defined(BIG_BATCH) && defined(CUFFT) && (defined(ASYNC) || defined(OPENMP))
-    for (auto it = p_threadctxs.begin(); it != p_threadctxs.end(); ++it) {
+    for (auto it = d.threadctxs.begin(); it != d.threadctxs.end(); ++it) {
         it->model_xf = p_model_xf;
         it->model_alphaf = p_model_alphaf;
     }
@@ -851,9 +857,9 @@ double KCF_Tracker::sub_grid_scale(uint index)
             A.at<float>(i, 1) = float(p_scales[i]);
             A.at<float>(i, 2) = 1;
 #ifdef BIG_BATCH
-            fval.at<float>(i) = p_threadctxs.back().max_responses[i];
+            fval.at<float>(i) = d.threadctxs.back().max_responses[i];
 #else
-            fval.at<float>(i) = p_threadctxs[i].max_response;
+            fval.at<float>(i) = d.threadctxs[i].max_response;
 #endif
         }
     } else {
@@ -867,14 +873,14 @@ double KCF_Tracker::sub_grid_scale(uint index)
              p_scales[index + 1] * p_scales[index + 1], p_scales[index + 1], 1);
 #ifdef BIG_BATCH
         fval = (cv::Mat_<float>(3, 1) <<
-                p_threadctxs.back().max_responses[index - 1],
-                p_threadctxs.back().max_responses[index + 0],
-                p_threadctxs.back().max_responses[index + 1]);
+                d.threadctxs.back().max_responses[index - 1],
+                d.threadctxs.back().max_responses[index + 0],
+                d.threadctxs.back().max_responses[index + 1]);
 #else
         fval = (cv::Mat_<float>(3, 1) <<
-                p_threadctxs[index - 1].max_response,
-                p_threadctxs[index + 0].max_response,
-                p_threadctxs[index + 1].max_response);
+                d.threadctxs[index - 1].max_response,
+                d.threadctxs[index + 0].max_response,
+                d.threadctxs[index + 1].max_response);
 #endif
     }
 

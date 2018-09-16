@@ -17,8 +17,10 @@
 
 #include "cnfeat.hpp"
 #include "fft.h"
-#include "threadctx.hpp"
 #include "pragmas.h"
+
+class Kcf_Tracker_Private;
+class ThreadCtx;
 
 struct BBox_c
 {
@@ -53,6 +55,7 @@ struct BBox_c
 
 class KCF_Tracker
 {
+    friend ThreadCtx;
 public:
     bool m_debug     {false};
     bool m_use_scale {true};
@@ -126,7 +129,7 @@ private:
     int p_num_of_feats;
     cv::Size p_roi;
 
-    std::vector<ThreadCtx> p_threadctxs;
+    Kcf_Tracker_Private &d;
 
     //CUDA compability
     cv::Mat p_rot_labels;
