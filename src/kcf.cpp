@@ -182,13 +182,12 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     p_yf.create(p_roi.height, width, 1);
     p_xf.create(p_roi.height, width, p_num_of_feats);
 
-    int max = BIG_BATCH_MODE ? 2 : p_num_scales;
-    for (int i = 0; i < max; ++i) {
-        if (BIG_BATCH_MODE && i == 1)
-            p_threadctxs.emplace_back(p_roi, p_num_of_feats * p_num_scales, 1, p_num_scales);
-        else
-            p_threadctxs.emplace_back(p_roi, p_num_of_feats, p_scales[i], 1);
-    }
+#ifndef BIG_BATCH
+    for (auto scale: p_scales)
+        d.threadctxs.emplace_back(p_roi, p_num_of_feats, scale, 1);
+#else
+    d.threadctxs.emplace_back(p_roi, p_num_of_feats * p_num_scales, 1, p_num_scales);
+#endif
 
     p_current_scale = 1.;
 
