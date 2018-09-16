@@ -26,6 +26,15 @@ public:
     virtual void forward_window(std::vector<cv::Mat> patch_feats, ComplexMat & complex_result, cv::Mat & fw_all, float *real_input_arr) = 0;
     virtual void inverse(ComplexMat &  complex_input, cv::Mat & real_result, float *real_result_arr) = 0;
     virtual ~Fft() = 0;
+
+    static cv::Size freq_size(cv::Size space_size)
+    {
+        cv::Size ret(space_size);
+#if defined(CUFFT) || defined(FFTW)
+        ret.width = space_size.width / 2 + 1;
+#endif
+        return ret;
+    }
 };
 
 #endif // FFT_H

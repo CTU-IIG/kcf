@@ -20,18 +20,15 @@ struct ThreadCtx {
         , gc(num_of_scales)
     {
         uint cells_size = roi.width * roi.height * sizeof(float);
+        cv::Size freq_size = Fft::freq_size(roi);
 
 #if defined(CUFFT) || defined(FFTW)
         this->gauss_corr_res = DynMem(cells_size * num_of_scales);
         this->data_features = DynMem(cells_size * num_channels);
 
-        uint width_freq = roi.width / 2 + 1;
-
         this->in_all = cv::Mat(roi.height * num_of_scales, roi.width, CV_32F, this->gauss_corr_res.hostMem());
         this->fw_all = cv::Mat(roi.height * num_channels, roi.width, CV_32F, this->data_features.hostMem());
 #else
-        uint width_freq = roi.width;
-
         this->in_all = cv::Mat(roi, CV_32F);
 #endif
 
@@ -41,15 +38,9 @@ struct ThreadCtx {
         this->ifft2_res = cv::Mat(roi, CV_32FC(num_channels), this->data_i_features.hostMem());
         this->response = cv::Mat(roi, CV_32FC(num_of_scales), this->data_i_1ch.hostMem());
 
-#ifdef CUFFT
-        this->zf.create(roi.height, width_freq, num_channels, num_of_scales);
-        this->kzf.create(roi.height, width_freq, num_of_scales);
-        this->kf.create(roi.height, width_freq, num_of_scales);
-#else
-        this->zf.create(roi.height, width_freq, num_channels, num_of_scales);
-        this->kzf.create(roi.height, width_freq, num_of_scales);
-        this->kf.create(roi.height, width_freq, num_of_scales);
-#endif
+        this->zf.create(freq_size.height, freq_size.width, num_channels, num_of_scales);
+        this->kzf.create(freq_size.height, freq_size.width, num_of_scales);
+        this->kf.create(freq_size.height, freq_size.width, num_of_scales);
 
 #ifdef BIG_BATCH
         if (num_of_scales > 1) {
@@ -59,6 +50,7 @@ struct ThreadCtx {
         }
 #endif
     }
+
     ThreadCtx(ThreadCtx &&) = default;
 
     const double scale;
