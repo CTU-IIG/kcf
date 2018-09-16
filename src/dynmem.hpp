@@ -39,7 +39,7 @@ template <typename T> class DynMem_ {
 #ifdef CUFFT
         CudaSafeCall(cudaFreeHost(this->ptr));
 #else
-        delete this->ptr;
+        delete[] this->ptr;
 #endif
     }
     T *hostMem() { return ptr; }
