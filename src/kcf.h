@@ -125,8 +125,7 @@ private:
     double p_min_max_scale[2];
     std::vector<double> p_scales;
 
-    //for big batch
-    int p_num_of_feats;
+    const int p_num_of_feats = 31 + m_use_color ? 3 : 0 + m_use_cnfeat ? 10 : 0;
     cv::Size p_roi;
 
     Kcf_Tracker_Private &d;
@@ -164,7 +163,7 @@ private:
     std::unique_ptr<GaussianCorrelation> gaussian_correlation;
     cv::Mat circshift(const cv::Mat & patch, int x_rot, int y_rot);
     cv::Mat cosine_window_function(int dim1, int dim2);
-    std::vector<cv::Mat> get_features(cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, double scale = 1.);
+    void get_features(MatDynMem &feat_3d, cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, double scale = 1.);
     cv::Point2f sub_pixel_peak(cv::Point & max_loc, cv::Mat & response);
     double sub_grid_scale(uint index);
 

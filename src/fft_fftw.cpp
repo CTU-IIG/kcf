@@ -167,15 +167,13 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
 #endif
 }
 
-void Fftw::set_window(const cv::Mat &window)
+void Fftw::set_window(const MatDynMem &window)
 {
     m_window = window;
 }
 
-void Fftw::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr)
+void Fftw::forward(const cv::Mat & real_input, ComplexMat & complex_result)
 {
-    (void)real_input_arr;
-
     if (BIG_BATCH_MODE && real_input.rows == int(m_height * m_num_of_scales)) {
         fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
                               reinterpret_cast<fftwf_complex *>(complex_result.get_p_data()));
@@ -186,18 +184,18 @@ void Fftw::forward(const cv::Mat &real_input, ComplexMat &complex_result, float 
     return;
 }
 
-void Fftw::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex_result, cv::Mat &fw_all,
-                          float *real_input_arr)
+void Fftw::forward_window(MatDynMem &feat, ComplexMat & complex_result, MatDynMem &temp)
 {
-    (void)real_input_arr;
+    assert(is_patch_feats_valid(feat));
 
-    int n_channels = int(patch_feats.size());
+    int n_channels = feat.size[0];
     for (int i = 0; i < n_channels; ++i) {
-        cv::Mat in_roi(fw_all, cv::Rect(0, i * int(m_height), int(m_width), int(m_height)));
-        in_roi = patch_feats[uint(i)].mul(m_window);
+        cv::Mat feat_plane(feat.dims - 1, feat.size + 1, feat.cv::Mat::type(), feat.ptr<void>(i));
+        cv::Mat temp_plane(temp.dims - 1, temp.size + 1, temp.cv::Mat::type(), temp.ptr(i));
+        temp_plane = feat_plane.mul(m_window);
     }
 
-    float *in = reinterpret_cast<float *>(fw_all.data);
+    float *in = temp.ptr<float>();
     fftwf_complex *out = reinterpret_cast<fftwf_complex *>(complex_result.get_p_data());
 
     if (n_channels <= int(m_num_of_feats))
@@ -207,13 +205,11 @@ void Fftw::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex_
     return;
 }
 
-void Fftw::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr)
+void Fftw::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
 {
-    (void)real_result_arr;
-
     int n_channels = complex_input.n_channels;
     fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_input.get_p_data());
-    float *out = reinterpret_cast<float *>(real_result.data);
+    float *out = real_result.ptr<float>();
 
     if (n_channels == 1)
         fftwf_execute_dft_c2r(plan_i_1ch, in, out);
@@ -225,7 +221,6 @@ void Fftw::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_
         fftwf_execute_dft_c2r(plan_i_features, in, out);
 
     real_result = real_result / (m_width * m_height);
-    return;
 }
 
 Fftw::~Fftw()

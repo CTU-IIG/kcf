@@ -141,10 +141,6 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     p_roi.width = p_windows_size.width / p_cell_size;
     p_roi.height = p_windows_size.height / p_cell_size;
 
-    p_num_of_feats = 31;
-    if (m_use_color) p_num_of_feats += 3;
-    if (m_use_cnfeat) p_num_of_feats += 10;
-
     p_scales.clear();
     if (m_use_scale)
         for (int i = -int(p_num_scales) / 2; i <= int(p_num_scales) / 2; ++i)
@@ -209,16 +205,13 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     fft.set_window(cosine_window_function(p_roi.width, p_roi.height));
 
     // window weights, i.e. labels
-    fft.forward(
-        gaussian_shaped_labels(p_output_sigma, p_roi.width, p_roi.height), p_yf,
-        m_use_cuda ? p_rot_labels_data.deviceMem() : nullptr);
+    fft.forward(gaussian_shaped_labels(p_output_sigma, p_roi.width, p_roi.height), p_yf);
     DEBUG_PRINTM(p_yf);
 
     // obtain a sub-window for training initial model
     std::vector<cv::Mat> patch_feats = get_features(input_rgb, input_gray, p_pose.cx, p_pose.cy,
                                                     p_windows_size.width, p_windows_size.height);
-    fft.forward_window(patch_feats, p_model_xf, d.threadctxs.front().fw_all,
-                       m_use_cuda ? d.threadctxs.front().data_features.deviceMem() : nullptr);
+    fft.forward_window(patch_feats, p_model_xf);
     DEBUG_PRINTM(p_model_xf);
 
     if (m_use_linearkernel) {
@@ -492,8 +485,12 @@ void KCF_Tracker::scale_track(ThreadCtx &vars, cv::Mat &input_rgb, cv::Mat &inpu
 
 // ****************************************************************************
 
-std::vector<cv::Mat> KCF_Tracker::get_features(cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, double scale)
+void KCF_Tracker::get_features(MatDynMem &result_3d, cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, double scale)
 {
+    assert(result_3d.size[0] == num_of_feats());
+    assert(result_3d.size[1] == size_x);
+    assert(result_3d.size[2] == size_y);
+
     int size_x_scaled = floor(size_x * scale);
     int size_y_scaled = floor(size_y * scale);
 

@@ -61,9 +61,9 @@ public:
 
 #ifdef BIG_BATCH
     // Stores value of responses, location of maximal response and response maps for each scale
-    std::vector<double> max_responses{num_of_scales};
-    std::vector<cv::Point2i> max_locs{num_of_scales};
-    std::vector<cv::Mat> response_maps{num_of_scales};
+    std::vector<double> max_responses = std::vector<double>(num_of_scales);
+    std::vector<cv::Point2i> max_locs = std::vector<cv::Point2i>(num_of_scales);
+    std::vector<cv::Mat> response_maps = std::vector<cv::Mat>(num_of_scales);
 #else
     const double scale;
 #endif

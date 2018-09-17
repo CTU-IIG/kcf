@@ -114,7 +114,7 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 #endif
 }
 
-void cuFFT::set_window(const cv::Mat &window)
+void cuFFT::set_window(const MatDynMem &window)
 {
     m_window = window;
 }
@@ -135,8 +135,7 @@ void cuFFT::forward(const cv::Mat &real_input, ComplexMat &complex_result, float
     return;
 }
 
-void cuFFT::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex_result, cv::Mat &fw_all,
-                           float *real_input_arr)
+void cuFFT::forward_window(MatDynMem &patch_feats_in, ComplexMat & complex_result, MatDynMem &tmp)
 {
     int n_channels = int(patch_feats.size());
 
@@ -162,7 +161,7 @@ void cuFFT::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex
     return;
 }
 
-void cuFFT::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr)
+void cuFFT::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
 {
     int n_channels = complex_input.n_channels;
     cufftComplex *in = reinterpret_cast<cufftComplex *>(complex_input.get_p_data());

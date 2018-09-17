@@ -9,7 +9,7 @@ void FftOpencv::init(unsigned width, unsigned height, unsigned num_of_feats, uns
     std::cout << "FFT: OpenCV" << std::endl;
 }
 
-void FftOpencv::set_window(const cv::Mat &window)
+void FftOpencv::set_window(const MatDynMem &window)
 {
     m_window = window;
 }
@@ -24,8 +24,7 @@ void FftOpencv::forward(const cv::Mat &real_input, ComplexMat &complex_result, f
     return;
 }
 
-void FftOpencv::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &complex_result, cv::Mat &fw_all,
-                               float *real_input_arr)
+void FftOpencv::forward_window(MatDynMem &patch_feats_in, ComplexMat & complex_result, MatDynMem &tmp)
 {
     (void)real_input_arr;
     (void)fw_all;
@@ -39,7 +38,7 @@ void FftOpencv::forward_window(std::vector<cv::Mat> patch_feats, ComplexMat &com
     return;
 }
 
-void FftOpencv::inverse(ComplexMat &complex_input, cv::Mat &real_result, float *real_result_arr)
+void FftOpencv::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
 {
     (void)real_result_arr;
 
