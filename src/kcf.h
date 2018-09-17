@@ -142,11 +142,26 @@ private:
     ComplexMat p_model_alphaf_den;
     ComplexMat p_model_xf;
     ComplexMat p_xf;
+
+    class GaussianCorrelation {
+      public:
+        GaussianCorrelation(cv::Size fft_result, uint num_of_scales)
+            : xf_sqr_norm(num_of_scales * sizeof(float))
+            , xyf(fft_result.height, fft_result.width, num_of_scales)
+        {}
+        void operator()(const KCF_Tracker &kcf, ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation = false);
+
+      private:
+        DynMem xf_sqr_norm;
+        DynMem yf_sqr_norm{sizeof(float)};
+        ComplexMat xyf;
+    };
+
     //helping functions
     void scale_track(ThreadCtx & vars, cv::Mat & input_rgb, cv::Mat & input_gray);
     cv::Mat get_subwindow(const cv::Mat & input, int cx, int cy, int size_x, int size_y);
     cv::Mat gaussian_shaped_labels(double sigma, int dim1, int dim2);
-    void gaussian_correlation(struct ThreadCtx &vars, const ComplexMat & xf, const ComplexMat & yf, double sigma, bool auto_correlation = false);
+    std::unique_ptr<GaussianCorrelation> gaussian_correlation;
     cv::Mat circshift(const cv::Mat & patch, int x_rot, int y_rot);
     cv::Mat cosine_window_function(int dim1, int dim2);
     std::vector<cv::Mat> get_features(cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, double scale = 1.);
