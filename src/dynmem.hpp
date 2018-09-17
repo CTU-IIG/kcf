@@ -2,6 +2,8 @@
 #define DYNMEM_HPP
 
 #include <cstdlib>
+#include <opencv2/opencv.hpp>
+#include <cassert>
 
 #if defined(CUFFT) || defined(CUFFTW)
 #include "cuda_runtime.h"
@@ -15,6 +17,8 @@ template <typename T> class DynMem_ {
     T *ptr_d = nullptr;
 
   public:
+    typedef T type;
+
     DynMem_()
     {}
     DynMem_(size_t size)
@@ -55,4 +59,15 @@ template <typename T> class DynMem_ {
     }
 };
 typedef DynMem_<float> DynMem;
+
+class MatDynMem : public DynMem, public cv::Mat {
+  public:
+    MatDynMem(cv::Size size, int type)
+        : DynMem(size.area() * sizeof(DynMem::type) * CV_MAT_CN(type)), cv::Mat(size, type, hostMem())
+    {
+        assert((type & CV_MAT_DEPTH_MASK) == CV_32F);
+    }
+    MatDynMem(int height, int width, int type) { MatDynMem(cv::Size(width, height), type); }
+};
+
 #endif // DYNMEM_HPP
