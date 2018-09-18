@@ -23,7 +23,7 @@ class Fft
 public:
     virtual void init(unsigned width, unsigned height,unsigned num_of_feats, unsigned num_of_scales) = 0;
     virtual void set_window(const MatDynMem &window) = 0;
-    virtual void forward(const cv::Mat & real_input, ComplexMat & complex_result) = 0;
+    virtual void forward(MatDynMem & real_input, ComplexMat & complex_result) = 0;
     virtual void forward_window(MatDynMem &patch_feats_in, ComplexMat & complex_result, MatDynMem &tmp) = 0;
     virtual void inverse(ComplexMat &  complex_input, MatDynMem & real_result) = 0;
     virtual ~Fft() = 0;

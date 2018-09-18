@@ -1,4 +1,10 @@
 #include "fft_cufft.h"
+#include <cublas_v2.h>
+
+cuFFT::cuFFT()
+{
+    CublasErrorCheck(cublasCreate(&cublas));
+}
 
 void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales)
 {
@@ -119,84 +125,68 @@ void cuFFT::set_window(const MatDynMem &window)
     m_window = window;
 }
 
-void cuFFT::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr)
+void cuFFT::forward(MatDynMem & real_input, ComplexMat & complex_result)
 {
     if (BIG_BATCH_MODE && real_input.rows == int(m_height * m_num_of_scales)) {
-        CufftErrorCheck(cufftExecR2C(plan_f_all_scales, reinterpret_cast<cufftReal *>(real_input_arr),
+        CufftErrorCheck(cufftExecR2C(plan_f_all_scales, reinterpret_cast<cufftReal *>(real_input.deviceMem()),
                                      complex_result.get_p_data()));
     } else {
         NORMAL_OMP_CRITICAL
         {
             CufftErrorCheck(
-                cufftExecR2C(plan_f, reinterpret_cast<cufftReal *>(real_input_arr), complex_result.get_p_data()));
+                cufftExecR2C(plan_f, reinterpret_cast<cufftReal *>(real_input.deviceMem()), complex_result.get_p_data()));
             cudaStreamSynchronize(cudaStreamPerThread);
         }
     }
     return;
 }
 
-void cuFFT::forward_window(MatDynMem &patch_feats_in, ComplexMat & complex_result, MatDynMem &tmp)
+void cuFFT::forward_window(MatDynMem &feat, ComplexMat & complex_result, MatDynMem &temp)
 {
-    int n_channels = int(patch_feats.size());
+    uint n_channels = feat.size[0];
+    cufftReal *temp_data = temp.deviceMem();
 
-    if (n_channels > int(m_num_of_feats)) {
-        for (uint i = 0; i < uint(n_channels); ++i) {
-            cv::Mat in_roi(fw_all, cv::Rect(0, int(i * m_height), int(m_width), int(m_height)));
-            in_roi = patch_feats[i].mul(m_window);
-        }
-        CufftErrorCheck(cufftExecR2C(plan_fw_all_scales, reinterpret_cast<cufftReal *>(real_input_arr),
-                                     complex_result.get_p_data()));
-    } else {
-        for (uint i = 0; i < uint(n_channels); ++i) {
-            cv::Mat in_roi(fw_all, cv::Rect(0, int(i * m_height), int(m_width), int(m_height)));
-            in_roi = patch_feats[i].mul(m_window);
-        }
-        NORMAL_OMP_CRITICAL
-        {
-            CufftErrorCheck(
-                cufftExecR2C(plan_fw, reinterpret_cast<cufftReal *>(real_input_arr), complex_result.get_p_data()));
-            cudaStreamSynchronize(cudaStreamPerThread);
-        }
+    assert(feat.dims == 3);
+    assert(n_channels == m_num_of_feats || n_channels == m_num_of_feats * m_num_of_scales);
+
+    for (uint i = 0; i < n_channels; ++i) {
+        cv::Mat feat_plane(feat.dims - 1, feat.size + 1, feat.cv::Mat::type(), feat.ptr<void>(i));
+        cv::Mat temp_plane(temp.dims - 1, temp.size + 1, temp.cv::Mat::type(), temp.ptr(i));
+        temp_plane = feat_plane.mul(m_window);
     }
-    return;
+    CufftErrorCheck(cufftExecR2C((n_channels == m_num_of_feats) ? plan_fw : plan_fw_all_scales,
+                                 temp_data, complex_result.get_p_data()));
 }
 
-void cuFFT::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
+void cuFFT::inverse(ComplexMat &complex_input, MatDynMem &real_result)
 {
-    int n_channels = complex_input.n_channels;
+    uint n_channels = complex_input.n_channels;
     cufftComplex *in = reinterpret_cast<cufftComplex *>(complex_input.get_p_data());
+    cufftReal *out = real_result.deviceMem();
+    float alpha = 1.0 / (m_width * m_height);
+    cufftHandle plan;
 
     if (n_channels == 1) {
-        NORMAL_OMP_CRITICAL
-        {
-            CufftErrorCheck(cufftExecC2R(plan_i_1ch, in, reinterpret_cast<cufftReal *>(real_result_arr)));
-            cudaStreamSynchronize(cudaStreamPerThread);
-        }
-        real_result = real_result / (m_width * m_height);
+        CufftErrorCheck(cufftExecC2R(plan_i_1ch, in, out));
+        CublasErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
         return;
-    } else if (n_channels == int(m_num_of_scales)) {
-        CufftErrorCheck(cufftExecC2R(plan_i_1ch_all_scales, in, reinterpret_cast<cufftReal *>(real_result_arr)));
-        cudaStreamSynchronize(cudaStreamPerThread);
-
-        real_result = real_result / (m_width * m_height);
+    } else if (n_channels == m_num_of_scales) {
+        CufftErrorCheck(cufftExecC2R(plan_i_1ch_all_scales, in, out));
+        CublasErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
         return;
-    } else if (n_channels == int(m_num_of_feats) * int(m_num_of_scales)) {
-        CufftErrorCheck(cufftExecC2R(plan_i_features_all_scales, in, reinterpret_cast<cufftReal *>(real_result_arr)));
+    } else if (n_channels == m_num_of_feats * m_num_of_scales) {
+        CufftErrorCheck(cufftExecC2R(plan_i_features_all_scales, in, out));
         cudaStreamSynchronize(cudaStreamPerThread);
         return;
     }
-    NORMAL_OMP_CRITICAL
-    {
-        CufftErrorCheck(cufftExecC2R(plan_i_features, in, reinterpret_cast<cufftReal *>(real_result_arr)));
-#if defined(OPENMP) && !defined(BIG_BATCH)
-        CudaSafeCall(cudaStreamSynchronize(cudaStreamPerThread));
-#endif
-    }
+    CufftErrorCheck(cufftExecC2R(plan_i_features, in, out));
     return;
 }
 
 cuFFT::~cuFFT()
 {
+    CublasErrorCheck(cublasDestroy(cublas));
+
     CufftErrorCheck(cufftDestroy(plan_f));
     CufftErrorCheck(cufftDestroy(plan_fw));
     CufftErrorCheck(cufftDestroy(plan_i_1ch));

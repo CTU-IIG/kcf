@@ -209,8 +209,10 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     DEBUG_PRINTM(p_yf);
 
     // obtain a sub-window for training initial model
-    std::vector<cv::Mat> patch_feats = get_features(input_rgb, input_gray, p_pose.cx, p_pose.cy,
-                                                    p_windows_size.width, p_windows_size.height);
+    int sizes[3] = {p_num_of_feats, p_windows_size.height, p_windows_size.width};
+    MatDynMem patch_feats(3, sizes, CV_32FC1);
+    MatDynMem temp(3, tmp, CV_32FC1);
+    get_features(features, input_rgb, input_gray, p_pose.cx, p_pose.cy, p_windows_size.width, p_windows_size.height);
     fft.forward_window(patch_feats, p_model_xf);
     DEBUG_PRINTM(p_model_xf);
 
@@ -638,7 +640,7 @@ cv::Mat KCF_Tracker::circshift(const cv::Mat &patch, int x_rot, int y_rot)
 }
 
 // hann window actually (Power-of-cosine windows)
-cv::Mat KCF_Tracker::cosine_window_function(int dim1, int dim2)
+MatDynMem KCF_Tracker::cosine_window_function(int dim1, int dim2)
 {
     cv::Mat m1(1, dim1, CV_32FC1), m2(dim2, 1, CV_32FC1);
     double N_inv = 1. / (static_cast<double>(dim1) - 1.);
@@ -647,7 +649,7 @@ cv::Mat KCF_Tracker::cosine_window_function(int dim1, int dim2)
     N_inv = 1. / (static_cast<double>(dim2) - 1.);
     for (int i = 0; i < dim2; ++i)
         m2.at<float>(i) = float(0.5 * (1. - std::cos(2. * CV_PI * static_cast<double>(i) * N_inv)));
-    cv::Mat ret = m2 * m1;
+    MatDynMem ret = m2 * m1;
     return ret;
 }
 

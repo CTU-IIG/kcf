@@ -115,6 +115,19 @@ static inline void __cufftErrorCheck(cufftResult_t call, const char *file, const
 
     return;
 }
+
+#define CublasErrorCheck(call) __cublasErrorCheck(call, __FILE__, __LINE__ )
+
+static inline void __cublasErrorCheck(cublasStatus_t call, const char *file, const int line )
+{
+    if (call != CUBLAS_STATUS_SUCCESS) {
+        fprintf(stderr, "cuBLAS error %d at %s:%d\n", call, /* _cudaGetErrorEnum(call),*/ file, line);
+        exit(-1);
+    }
+
+    return;
+}
+
 #endif
 
 #endif

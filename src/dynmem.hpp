@@ -20,31 +20,29 @@ template <typename T> class DynMem_ {
 #endif
   public:
     typedef T type;
-    DynMem_() {}
     DynMem_(size_t size)
     {
 #ifdef CUFFT
-        CudaSafeCall(cudaHostAlloc(reinterpret_cast<void **>(&this->ptr), size, cudaHostAllocMapped));
-        CudaSafeCall(
-            cudaHostGetDevicePointer(reinterpret_cast<void **>(&this->ptr_d), reinterpret_cast<void *>(this->ptr), 0));
+        CudaSafeCall(cudaHostAlloc(reinterpret_cast<void **>(&ptr_h), size, cudaHostAllocMapped));
+        CudaSafeCall(cudaHostGetDevicePointer(reinterpret_cast<void **>(&ptr_d), reinterpret_cast<void *>(ptr_h), 0));
 #else
-        this->ptr_h = new float[size];
+        ptr_h = new float[size];
 #endif
     }
     DynMem_(DynMem_&& other) {
-        this->ptr_h = other.ptr_h;
+        ptr_h = other.ptr_h;
         other.ptr_h = nullptr;
 #ifdef CUFFT
-        this->ptr_d = other.ptr_d;
+        ptr_d = other.ptr_d;
         other.ptr_d = nullptr;
 #endif
     }
     ~DynMem_()
     {
 #ifdef CUFFT
-        CudaSafeCall(cudaFreeHost(this->ptr));
+        CudaSafeCall(cudaFreeHost(ptr_h));
 #else
-        delete[] this->ptr_h;
+        delete[] ptr_h;
 #endif
     }
     T *hostMem() { return ptr_h; }
@@ -53,10 +51,10 @@ template <typename T> class DynMem_ {
 #endif
     void operator=(DynMem_ &&rhs)
     {
-        this->ptr_h = rhs.ptr_h;
+        ptr_h = rhs.ptr_h;
         rhs.ptr_h = nullptr;
 #ifdef CUFFT
-        this->ptr_d = rhs.ptr_d;
+        ptr_d = rhs.ptr_d;
         rhs.ptr_d = nullptr;
 #endif
     }
@@ -65,14 +63,18 @@ template <typename T> class DynMem_ {
 typedef DynMem_<float> DynMem;
 
 
-class MatDynMem : protected DynMem, public cv::Mat {
+class MatDynMem : public DynMem, public cv::Mat {
   public:
     MatDynMem(cv::Size size, int type)
         : DynMem(size.area() * sizeof(DynMem::type) * CV_MAT_CN(type)), cv::Mat(size, type, hostMem())
     {
         assert((type & CV_MAT_DEPTH_MASK) == CV_32F);
     }
-    MatDynMem(int height, int width, int type) { MatDynMem(cv::Size(width, height), type); }
+    MatDynMem(int height, int width, int type)
+        : DynMem(width * height * sizeof(DynMem::type) * CV_MAT_CN(type)), cv::Mat(height, width, type, hostMem())
+    {
+        assert((type & CV_MAT_DEPTH_MASK) == CV_32F);
+    }
     MatDynMem(int ndims, const int *sizes, int type)
         : DynMem(volume(ndims, sizes) * sizeof(DynMem::type) * CV_MAT_CN(type)), cv::Mat(ndims, sizes, type, hostMem())
     {

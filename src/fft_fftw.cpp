@@ -172,7 +172,7 @@ void Fftw::set_window(const MatDynMem &window)
     m_window = window;
 }
 
-void Fftw::forward(const cv::Mat & real_input, ComplexMat & complex_result)
+void Fftw::forward(MatDynMem & real_input, ComplexMat & complex_result)
 {
     if (BIG_BATCH_MODE && real_input.rows == int(m_height * m_num_of_scales)) {
         fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
