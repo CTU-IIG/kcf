@@ -60,20 +60,10 @@ public:
     bool m_debug     {false};
     bool m_use_scale {true};
     bool m_use_color {true};
-#ifdef ASYNC
-    bool m_use_multithreading {true};
-#else
-    bool m_use_multithreading {false};
-#endif //ASYNC
     bool m_use_subpixel_localization {true};
     bool m_use_subgrid_scale {true};
     bool m_use_cnfeat {true};
     bool m_use_linearkernel {false};
-#ifdef CUFFT
-    bool m_use_cuda {true};
-#else
-    bool m_use_cuda {false};
-#endif
 
     /*
     padding             ... extra area surrounding the target           (1.5)
