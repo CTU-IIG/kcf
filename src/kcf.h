@@ -164,10 +164,11 @@ private:
     MatDynMem circshift(const cv::Mat &patch, int x_rot, int y_rot);
     cv::Mat cosine_window_function(int dim1, int dim2);
     void get_features(MatDynMem &feat_3d, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy, int size_x, int size_y, double scale);
-    cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response);
+    cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const;
     double sub_grid_scale(uint index);
     void resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray);
     void train(cv::Mat input_gray, cv::Mat input_rgb, double interp_factor);
+    void findMaxReponse(uint &max_idx, cv::Point2f &new_location) const;
 };
 
 #endif //KCF_HEADER_6565467831231

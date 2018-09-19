@@ -307,6 +307,46 @@ void KCF_Tracker::resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray)
     }
 }
 
+void KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2f &new_location) const
+{
+    double max = -1.;
+#ifndef BIG_BATCH
+    for (uint j = 0; j < d.threadctxs.size(); ++j) {
+        if (d.threadctxs[j].max_response > max) {
+            max = d.threadctxs[j].max_response;
+            max_idx = j;
+        }
+    }
+#else
+    // FIXME: Iterate correctly in big batch mode - perhaps have only one element in the list
+    for (uint j = 0; j < p_scales.size(); ++j) {
+        if (d.threadctxs[0].max_responses[j] > max) {
+            max = d.threadctxs[0].max_responses[j];
+            max_idx = j;
+        }
+    }
+#endif
+    cv::Point2i &max_response_pt = IF_BIG_BATCH(d.threadctxs[0].max_locs[max_idx],      d.threadctxs[max_idx].max_loc);
+    cv::Mat &max_response_map    = IF_BIG_BATCH(d.threadctxs[0].response_maps[max_idx], d.threadctxs[max_idx].response);
+
+    DEBUG_PRINTM(max_response_map);
+    DEBUG_PRINT(max_response_pt);
+
+    // sub pixel quadratic interpolation from neighbours
+    if (max_response_pt.y > max_response_map.rows / 2) // wrap around to negative half-space of vertical axis
+        max_response_pt.y = max_response_pt.y - max_response_map.rows;
+    if (max_response_pt.x > max_response_map.cols / 2) // same for horizontal axis
+        max_response_pt.x = max_response_pt.x - max_response_map.cols;
+
+
+    if (m_use_subpixel_localization) {
+        new_location = sub_pixel_peak(max_response_pt, max_response_map);
+    } else {
+        new_location = max_response_pt;
+    }
+    DEBUG_PRINT(new_location);
+}
+
 void KCF_Tracker::track(cv::Mat &img)
 {
     if (m_debug) std::cout << "NEW FRAME" << '\n';
@@ -335,48 +375,9 @@ void KCF_Tracker::track(cv::Mat &img)
         scale_track(d.threadctxs[i], input_rgb, input_gray);
 #endif
 
-    max_response = -1.;
-    cv::Point2i *max_response_pt = nullptr;
-    cv::Mat *max_response_map = nullptr;
-    uint max_idx = 0;
-
-#ifndef BIG_BATCH
-    for (uint j = 0; j < d.threadctxs.size(); ++j) {
-        ThreadCtx &it = d.threadctxs[j];
-        if (it.max_response > max_response) {
-            max_response = it.max_response;
-            max_response_pt = &it.max_loc;
-            max_response_map = &it.response;
-            max_idx = j;
-        }
-    }
-#else
-    // FIXME: Iterate correctly in big batch mode - perhaps have only one element in the list
-    for (uint j = 0; j < p_scales.size(); ++j) {
-        if (d.threadctxs[0].max_responses[j] > max_response) {
-            max_response = d.threadctxs[0].max_responses[j];
-            max_response_pt = &d.threadctxs[0].max_locs[j];
-            max_response_map = &d.threadctxs[0].response_maps[j];
-            max_idx = j;
-        }
-    }
-#endif
-
-    DEBUG_PRINTM(*max_response_map);
-    DEBUG_PRINT(*max_response_pt);
-
-    // sub pixel quadratic interpolation from neighbours
-    if (max_response_pt->y > max_response_map->rows / 2) // wrap around to negative half-space of vertical axis
-        max_response_pt->y = max_response_pt->y - max_response_map->rows;
-    if (max_response_pt->x > max_response_map->cols / 2) // same for horizontal axis
-        max_response_pt->x = max_response_pt->x - max_response_map->cols;
-
-    cv::Point2f new_location(max_response_pt->x, max_response_pt->y);
-    DEBUG_PRINT(new_location);
-
-    if (m_use_subpixel_localization)
-        new_location = sub_pixel_peak(*max_response_pt, *max_response_map);
-    DEBUG_PRINT(new_location);
+    cv::Point2f new_location;
+    uint max_idx;
+    findMaxReponse(max_idx, new_location);
 
     p_pose.cx += p_current_scale * p_cell_size * double(new_location.x);
     p_pose.cy += p_current_scale * p_cell_size * double(new_location.y);
@@ -752,7 +753,7 @@ float get_response_circular(cv::Point2i &pt, cv::Mat &response)
     return response.at<float>(y, x);
 }
 
-cv::Point2f KCF_Tracker::sub_pixel_peak(cv::Point &max_loc, cv::Mat &response)
+cv::Point2f KCF_Tracker::sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const
 {
     // find neighbourhood of max_loc (response is circular)
     // 1 2 3
