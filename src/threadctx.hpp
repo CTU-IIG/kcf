@@ -41,7 +41,7 @@ public:
     std::future<void> async_res;
 #endif
 
-    KCF_Tracker::GaussianCorrelation gaussian_correlation{Fft::freq_size(roi), num_of_scales};
+    KCF_Tracker::GaussianCorrelation gaussian_correlation{Fft::freq_size(roi), num_of_scales, num_channels};
 
 #if defined(CUFFT) || defined(FFTW) // TODO: Why this ifdef?
     MatDynMem in_all{roi.height * int(num_of_scales), roi.width, CV_32F};

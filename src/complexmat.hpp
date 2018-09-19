@@ -25,6 +25,11 @@ template <typename T> class ComplexMat_ {
     {
         p_data.resize(n_channels * cols * rows);
     }
+    ComplexMat_(cv::Size size, uint _n_channels)
+        : cols(size.width), rows(size.height), n_channels(_n_channels)
+    {
+        p_data.resize(n_channels * cols * rows);
+    }
 
     // assuming that mat has 2 channels (real, img)
     ComplexMat_(const cv::Mat &mat) : cols(uint(mat.cols)), rows(uint(mat.rows)), n_channels(1)
@@ -169,12 +174,6 @@ template <typename T> class ComplexMat_ {
     ComplexMat_<T> mul(const ComplexMat_<T> &rhs) const
     {
         return matn_mat1_operator([](std::complex<T> &c_lhs, const std::complex<T> &c_rhs) { c_lhs *= c_rhs; }, rhs);
-    }
-
-    // multiplying element-wise multichannel by one channel mats (rhs mat is with multiple channel)
-    ComplexMat_<T> mul2(const ComplexMat_<T> &rhs) const
-    {
-        return matn_mat2_operator([](std::complex<T> &c_lhs, const std::complex<T> &c_rhs) { c_lhs *= c_rhs; }, rhs);
     }
 
     // text output

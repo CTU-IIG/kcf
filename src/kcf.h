@@ -130,10 +130,6 @@ private:
 
     Kcf_Tracker_Private &d;
 
-    //CUDA compability
-    cv::Mat p_rot_labels;
-    DynMem p_rot_labels_data;
-
     //model
     ComplexMat p_yf;
     ComplexMat p_model_alphaf;
@@ -144,29 +140,36 @@ private:
 
     class GaussianCorrelation {
       public:
-        GaussianCorrelation(cv::Size fft_result, uint num_of_scales)
-            : xf_sqr_norm(num_of_scales * sizeof(float))
-            , xyf(fft_result.height, fft_result.width, num_of_scales)
+        GaussianCorrelation(cv::Size size, uint num_scales, uint num_feats)
+            : ifft_size{int(num_feats * num_scales), int(size.height), int(size.width)}
+            , xf_sqr_norm(num_scales)
+            , xyf(Fft::freq_size(size), num_scales)
+            , k({int(num_scales), size.height, size.width}, CV_32F)
         {}
         void operator()(const KCF_Tracker &kcf, ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation = false);
 
       private:
+        const int ifft_size[3];
+
         DynMem xf_sqr_norm;
         DynMem yf_sqr_norm{sizeof(float)};
         ComplexMat xyf;
+        MatDynMem ifft_res{3, const_cast<int*>(ifft_size), CV_32FC1};
+        MatDynMem k;
     };
 
     //helping functions
-    void scale_track(ThreadCtx & vars, cv::Mat & input_rgb, cv::Mat & input_gray);
-    cv::Mat get_subwindow(const cv::Mat & input, int cx, int cy, int size_x, int size_y);
-    cv::Mat gaussian_shaped_labels(double sigma, int dim1, int dim2);
+    void scale_track(ThreadCtx &vars, cv::Mat &input_rgb, cv::Mat &input_gray);
+    cv::Mat get_subwindow(const cv::Mat &input, int cx, int cy, int size_x, int size_y);
+    MatDynMem gaussian_shaped_labels(double sigma, int dim1, int dim2);
     std::unique_ptr<GaussianCorrelation> gaussian_correlation;
-    cv::Mat circshift(const cv::Mat & patch, int x_rot, int y_rot);
-    MatDynMem cosine_window_function(int dim1, int dim2);
-    void get_features(MatDynMem &feat_3d, cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, double scale = 1.);
-    cv::Point2f sub_pixel_peak(cv::Point & max_loc, cv::Mat & response);
+    MatDynMem circshift(const cv::Mat &patch, int x_rot, int y_rot);
+    cv::Mat cosine_window_function(int dim1, int dim2);
+    void get_features(MatDynMem &feat_3d, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy, int size_x, int size_y, double scale);
+    cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response);
     double sub_grid_scale(uint index);
     void resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray);
+    void train(cv::Mat input_gray, cv::Mat input_rgb, double interp_factor);
 };
 
 #endif //KCF_HEADER_6565467831231

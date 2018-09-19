@@ -30,6 +30,12 @@ class ComplexMat {
         CudaSafeCall(cudaMalloc(&p_data, n_channels * cols * rows * sizeof(cufftComplex)));
     }
 
+    ComplexMat(cv::Size size, uint _n_channels)
+        : cols(size.width), rows(size.height), n_channels(_n_channels)
+    {
+        CudaSafeCall(cudaMalloc(&p_data, n_channels * cols * rows * sizeof(cufftComplex)));
+    }
+
     ComplexMat(ComplexMat &&other)
     {
         cols = other.cols;

@@ -84,7 +84,13 @@ class MatDynMem : public DynMem, public cv::Mat {
     {
         assert((type & CV_MAT_DEPTH_MASK) == CV_32F);
     }
+    MatDynMem(std::array<int, 3> size, int type)
+        : DynMem(size[0] * size[1] * size[2]), cv::Mat(3, (int*)&size, type, hostMem())
+    {}
     MatDynMem(MatDynMem &&other) = default;
+    MatDynMem(const cv::Mat &other)
+        : DynMem(other.total()) , cv::Mat(other) {}
+
     void operator=(const cv::MatExpr &expr) {
         static_cast<cv::Mat>(*this) = expr;
     }
@@ -97,6 +103,8 @@ class MatDynMem : public DynMem, public cv::Mat {
             vol *= sizes[i];
         return vol;
     }
+
+    using cv::Mat::create;
 };
 
 #endif // DYNMEM_HPP
