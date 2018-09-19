@@ -19,12 +19,14 @@
 #include <omp.h>
 #endif // OPENMP
 
+static bool kcf_debug = false;
+
 #define DEBUG_PRINT(obj)                                                                                               \
-    if (m_debug) {                                                                                                     \
+    if (kcf_debug) {                                                                                                     \
         std::cout << #obj << " @" << __LINE__ << std::endl << (obj) << std::endl;                                      \
     }
 #define DEBUG_PRINTM(obj)                                                                                              \
-    if (m_debug) {                                                                                                     \
+    if (kcf_debug) {                                                                                                     \
         std::cout << #obj << " @" << __LINE__ << " " << (obj).size() << " CH: " << (obj).channels() << std::endl       \
                   << (obj) << std::endl;                                                                               \
     }
@@ -349,7 +351,9 @@ void KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2f &new_location) const
 
 void KCF_Tracker::track(cv::Mat &img)
 {
+    kcf_debug = m_debug;
     if (m_debug) std::cout << "NEW FRAME" << '\n';
+
     cv::Mat input_gray, input_rgb = img.clone();
     if (img.channels() == 3) {
         cv::cvtColor(img, input_gray, CV_BGR2GRAY);
