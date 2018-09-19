@@ -84,6 +84,7 @@ class MatDynMem : public DynMem, public cv::Mat {
     {
         assert((type & CV_MAT_DEPTH_MASK) == CV_32F);
     }
+    MatDynMem(MatDynMem &&other) = default;
     void operator=(const cv::MatExpr &expr) {
         static_cast<cv::Mat>(*this) = expr;
     }
