@@ -14,18 +14,20 @@
 
 #ifdef BIG_BATCH
 #define BIG_BATCH_MODE 1
+#define IF_BIG_BATCH(true, false) true
 #else
 #define BIG_BATCH_MODE 0
+#define IF_BIG_BATCH(true, false) false
 #endif
 
 class Fft
 {
 public:
-    virtual void init(unsigned width, unsigned height,unsigned num_of_feats, unsigned num_of_scales) = 0;
-    virtual void set_window(const MatDynMem &window) = 0;
-    virtual void forward(MatDynMem & real_input, ComplexMat & complex_result) = 0;
-    virtual void forward_window(MatDynMem &patch_feats_in, ComplexMat & complex_result, MatDynMem &tmp) = 0;
-    virtual void inverse(ComplexMat &  complex_input, MatDynMem & real_result) = 0;
+    virtual void init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales);
+    virtual void set_window(const MatDynMem &window);
+    virtual void forward(const MatDynMem &real_input, ComplexMat &complex_result);
+    virtual void forward_window(MatDynMem &patch_feats_in, ComplexMat &complex_result, MatDynMem &tmp);
+    virtual void inverse(ComplexMat &complex_input, MatDynMem &real_result);
     virtual ~Fft() = 0;
 
     static cv::Size freq_size(cv::Size space_size)
@@ -38,12 +40,10 @@ public:
     }
 
 protected:
-    bool is_patch_feats_valid(const MatDynMem &patch_feats)
-    {
-        return patch_feats.dims == 3;
-               // && patch_feats.size[1] == width
-               // && patch_feats.size[2] == height
-    }
+    unsigned m_width, m_height, m_num_of_feats;
+#ifdef BIG_BATCH
+    unsigned m_num_of_scales;
+#endif
 };
 
 #endif // FFT_H

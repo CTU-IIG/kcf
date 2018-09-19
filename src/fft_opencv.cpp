@@ -2,10 +2,7 @@
 
 void FftOpencv::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales)
 {
-    (void)width;
-    (void)height;
-    (void)num_of_feats;
-    (void)num_of_scales;
+    Fft::init(width, height, num_of_feats, num_of_scales);
     std::cout << "FFT: OpenCV" << std::endl;
 }
 
@@ -16,7 +13,7 @@ void FftOpencv::set_window(const MatDynMem &window)
 
 void FftOpencv::forward(const cv::Mat &real_input, ComplexMat &complex_result, float *real_input_arr)
 {
-    (void)real_input_arr;
+    Fft::forward(real_input, complex_result);
 
     cv::Mat tmp;
     cv::dft(real_input, tmp, cv::DFT_COMPLEX_OUTPUT);
@@ -26,6 +23,8 @@ void FftOpencv::forward(const cv::Mat &real_input, ComplexMat &complex_result, f
 
 void FftOpencv::forward_window(MatDynMem &patch_feats_in, ComplexMat & complex_result, MatDynMem &tmp)
 {
+    Fft::forward_window(feat, complex_result, temp);
+
     (void)real_input_arr;
     (void)fw_all;
 
@@ -40,6 +39,8 @@ void FftOpencv::forward_window(MatDynMem &patch_feats_in, ComplexMat & complex_r
 
 void FftOpencv::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
 {
+    Fft::inverse(complex_input, real_result);
+
     (void)real_result_arr;
 
     if (complex_input.n_channels == 1) {

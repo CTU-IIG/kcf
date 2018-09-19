@@ -20,9 +20,9 @@ public:
     Fftw();
     void init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales) override;
     void set_window(const MatDynMem &window) override;
-    void forward(MatDynMem & real_input, ComplexMat & complex_result) override;
-    void forward_window(MatDynMem &patch_feats_in, ComplexMat & complex_result, MatDynMem &tmp) override;
-    void inverse(ComplexMat &  complex_input, MatDynMem & real_result) override;
+    void forward(const MatDynMem &real_input, ComplexMat &complex_result) override;
+    void forward_window(MatDynMem &patch_feats_in, ComplexMat &complex_result, MatDynMem &tmp) override;
+    void inverse(ComplexMat &complex_input, MatDynMem &real_result) override;
     ~Fftw() override;
 private:
     unsigned m_width, m_height, m_num_of_feats, m_num_of_scales;

@@ -16,10 +16,7 @@ Fftw::Fftw(){}
 
 void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales)
 {
-    m_width = width;
-    m_height = height;
-    m_num_of_feats = num_of_feats;
-    m_num_of_scales = num_of_scales;
+    Fft::init(width, height, num_of_feats, num_of_scales);
 
 #if (!defined(ASYNC) && !defined(CUFFTW)) && defined(OPENMP)
     fftw_init_threads();
@@ -169,11 +166,14 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
 
 void Fftw::set_window(const MatDynMem &window)
 {
+    Fft::set_window(window);
     m_window = window;
 }
 
-void Fftw::forward(MatDynMem & real_input, ComplexMat & complex_result)
+void Fftw::forward(MatDynMem &&real_input, ComplexMat & complex_result)
 {
+    Fft::forward(real_input, complex_result);
+
     if (BIG_BATCH_MODE && real_input.rows == int(m_height * m_num_of_scales)) {
         fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
                               reinterpret_cast<fftwf_complex *>(complex_result.get_p_data()));
@@ -186,7 +186,7 @@ void Fftw::forward(MatDynMem & real_input, ComplexMat & complex_result)
 
 void Fftw::forward_window(MatDynMem &feat, ComplexMat & complex_result, MatDynMem &temp)
 {
-    assert(is_patch_feats_valid(feat));
+    Fft::forward_window(feat, complex_result, temp);
 
     int n_channels = feat.size[0];
     for (int i = 0; i < n_channels; ++i) {
@@ -207,6 +207,8 @@ void Fftw::forward_window(MatDynMem &feat, ComplexMat & complex_result, MatDynMe
 
 void Fftw::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
 {
+    Fft::inverse(complex_input, real_result);
+
     int n_channels = complex_input.n_channels;
     fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_input.get_p_data());
     float *out = real_result.ptr<float>();
