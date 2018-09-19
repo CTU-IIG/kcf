@@ -697,7 +697,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, Comple
     } else {
         yf.sqr_norm(yf_sqr_norm);
     }
-    xyf = auto_correlation ? xf.sqr_mag() : xf.mul2(yf.conj());
+    xyf = auto_correlation ? xf.sqr_mag() : xf.mul(yf.conj());
     //DEBUG_PRINTM(xyf);
     kcf.fft.inverse(xyf, ifft_res);
 #ifdef CUFFT
@@ -706,22 +706,22 @@ void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, Comple
                               xf.n_channels, xf.n_scales, kcf.p_roi.height, kcf.p_roi.width);
 #else
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
-    //DEBUG_PRINTM(vars.ifft2_res);
+    //DEBUG_PRINTM(ifft_res);
     cv::Mat xy_sum;
-    if (xf.channels() != p_num_scales * p_num_of_feats)
-        xy_sum.create(vars.ifft2_res.size(), CV_32FC1);
+    if (xf.channels() != kcf.p_num_scales * kcf.p_num_of_feats)
+        xy_sum.create(ifft_res.size(), CV_32FC1);
     else
-        xy_sum.create(vars.ifft2_res.size(), CV_32FC(p_scales.size()));
+        xy_sum.create(ifft_res.size(), CV_32FC(kcf.p_scales.size()));
     xy_sum.setTo(0);
-    for (int y = 0; y < vars.ifft2_res.rows; ++y) {
-        float *row_ptr = vars.ifft2_res.ptr<float>(y);
+    for (int y = 0; y < ifft_res.rows; ++y) {
+        float *row_ptr = ifft_res.ptr<float>(y);
         float *row_ptr_sum = xy_sum.ptr<float>(y);
-        for (int x = 0; x < vars.ifft2_res.cols; ++x) {
+        for (int x = 0; x < ifft_res.cols; ++x) {
             for (int sum_ch = 0; sum_ch < xy_sum.channels(); ++sum_ch) {
                 row_ptr_sum[(x * xy_sum.channels()) + sum_ch] += std::accumulate(
-                    row_ptr + x * vars.ifft2_res.channels() + sum_ch * (vars.ifft2_res.channels() / xy_sum.channels()),
-                    (row_ptr + x * vars.ifft2_res.channels() +
-                     (sum_ch + 1) * (vars.ifft2_res.channels() / xy_sum.channels())),
+                    row_ptr + x * ifft_res.channels() + sum_ch * (ifft_res.channels() / xy_sum.channels()),
+                    (row_ptr + x * ifft_res.channels() +
+                     (sum_ch + 1) * (ifft_res.channels() / xy_sum.channels())),
                     0.f);
             }
         }
@@ -733,16 +733,13 @@ void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, Comple
 
     float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / xf.n_scales));
     for (uint i = 0; i < xf.n_scales; ++i) {
-        cv::Mat in_roi(vars.in_all, cv::Rect(0, i * scales[0].rows, scales[0].cols, scales[0].rows));
-        cv::exp(
-            -1. / (sigma * sigma) *
-                cv::max((double(vars.gc.xf_sqr_norm.hostMem()[i] + vars.gc.yf_sqr_norm.hostMem()[0]) - 2 * scales[i]) * double(numel_xf_inv), 0),
-            in_roi);
-        DEBUG_PRINTM(in_roi);
+        cv::Mat k_roi(k, cv::Rect(0, i * scales[0].rows, scales[0].cols, scales[0].rows));
+        cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm[i] + yf_sqr_norm[0] - 2 * scales[i]) * numel_xf_inv, 0),
+                k_roi);
+        DEBUG_PRINTM(k_roi);
     }
 #endif
     kcf.fft.forward(k, result);
-    return;
 }
 
 float get_response_circular(cv::Point2i &pt, cv::Mat &response)
