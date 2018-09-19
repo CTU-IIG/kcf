@@ -11,7 +11,7 @@ addons:
       - ninja-build
       - libopencv-dev
       - libfftw3-dev
-      - cuda-command-line-tools-8-0 cuda-cufft-dev-8-0
+      - cuda-command-line-tools-8-0 cuda-cufft-dev-8-0 cuda-cublas-dev-8-0
 
 env:
   - CUDA_BIN_PATH=/usr/local/cuda-8.0 CXXFLAGS=-Werror CUDA_ARCH_LIST=6.2
