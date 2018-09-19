@@ -282,17 +282,8 @@ double KCF_Tracker::getFilterResponse() const
     return this->max_response;
 }
 
-void KCF_Tracker::track(cv::Mat &img)
+void KCF_Tracker::resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray)
 {
-    if (m_debug) std::cout << "NEW FRAME" << '\n';
-    cv::Mat input_gray, input_rgb = img.clone();
-    if (img.channels() == 3) {
-        cv::cvtColor(img, input_gray, CV_BGR2GRAY);
-        input_gray.convertTo(input_gray, CV_32FC1);
-    } else
-        img.convertTo(input_gray, CV_32FC1);
-
-    // don't need too large image
     if (p_resize_image) {
         cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
         cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
@@ -306,6 +297,20 @@ void KCF_Tracker::track(cv::Mat &img)
             cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_scale_factor_x, p_scale_factor_y, cv::INTER_LINEAR);
         }
     }
+}
+
+void KCF_Tracker::track(cv::Mat &img)
+{
+    if (m_debug) std::cout << "NEW FRAME" << '\n';
+    cv::Mat input_gray, input_rgb = img.clone();
+    if (img.channels() == 3) {
+        cv::cvtColor(img, input_gray, CV_BGR2GRAY);
+        input_gray.convertTo(input_gray, CV_32FC1);
+    } else
+        img.convertTo(input_gray, CV_32FC1);
+
+    // don't need too large image
+    resizeImgs(input_rgb, input_gray);
 
     max_response = -1.;
     ThreadCtx *max = nullptr;
