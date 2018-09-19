@@ -125,7 +125,7 @@ private:
     double p_min_max_scale[2];
     std::vector<double> p_scales;
 
-    const int p_num_of_feats = 31 + m_use_color ? 3 : 0 + m_use_cnfeat ? 10 : 0;
+    const int p_num_of_feats = 31 + (m_use_color ? 3 : 0) + (m_use_cnfeat ? 10 : 0);
     cv::Size p_roi;
 
     Kcf_Tracker_Private &d;

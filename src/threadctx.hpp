@@ -49,8 +49,8 @@ public:
     MatDynMem in_all{roi, CV_32F};
 #endif
     MatDynMem fw_all{roi.height * int(num_channels), roi.width, CV_32F};
-    MatDynMem ifft2_res{roi, CV_32FC(num_channels)};
-    MatDynMem response{roi, CV_32FC(num_of_scales)};
+    MatDynMem ifft2_res{roi, CV_32FC(int(num_channels))};
+    MatDynMem response{roi, CV_32FC(int(num_of_scales))};
 
     ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_channels, num_of_scales};
     ComplexMat kzf{uint(freq_size.height), uint(freq_size.width), num_of_scales};
