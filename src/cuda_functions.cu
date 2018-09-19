@@ -23,7 +23,7 @@ __global__ void gaussian_correlation_kernel(float *data_in, float *data_out, flo
     }
 
     if (threadIdx.x == 0) {
-        float accumulate_res = sdata[0] / (rows * cols);
+        float accumulate_res = sdata[0];
 
         float numel_xf_inv = 1.f / ((cols / 2 + 1) * rows * (channels_per_scale));
 

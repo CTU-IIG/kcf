@@ -106,10 +106,11 @@ void cuFFT::inverse(ComplexMat &complex_input, MatDynMem &real_result)
 
     if (n_channels == 1) {
         CufftErrorCheck(cufftExecC2R(plan_i_1ch, in, out));
-        CublasErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
     } else {
         CufftErrorCheck(cufftExecC2R(plan_i_features, in, out));
     }
+    // TODO: Investigate whether this scalling is needed or not
+    CublasErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
 }
 
 cuFFT::~cuFFT()
