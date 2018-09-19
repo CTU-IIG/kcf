@@ -715,7 +715,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, Comple
 {
     xf.sqr_norm(xf_sqr_norm);
     if (auto_correlation) {
-        yf_sqr_norm.hostMem()[0] = xf_sqr_norm.hostMem()[0];
+        yf_sqr_norm = xf_sqr_norm;
     } else {
         yf.sqr_norm(yf_sqr_norm);
     }

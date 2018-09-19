@@ -18,9 +18,10 @@ template <typename T> class DynMem_ {
 #ifdef CUFFT
     T *ptr_d = nullptr;
 #endif
+    size_t size;
   public:
     typedef T type;
-    DynMem_(size_t size)
+    DynMem_(size_t size) : size(size)
     {
 #ifdef CUFFT
         CudaSafeCall(cudaHostAlloc(reinterpret_cast<void **>(&ptr_h), size, cudaHostAllocMapped));
@@ -49,6 +50,9 @@ template <typename T> class DynMem_ {
 #ifdef CUFFT
     T *deviceMem() { return ptr_d; }
 #endif
+    void operator=(DynMem_ &rhs) {
+        memcpy(ptr_h, rhs.ptr_h, size * sizeof(T));
+    }
     void operator=(DynMem_ &&rhs)
     {
         ptr_h = rhs.ptr_h;
