@@ -320,11 +320,6 @@ void KCF_Tracker::track(cv::Mat &img)
     // don't need too large image
     resizeImgs(input_rgb, input_gray);
 
-    max_response = -1.;
-    ThreadCtx *max = nullptr;
-    cv::Point2i *max_response_pt = nullptr;
-    cv::Mat *max_response_map = nullptr;
-
 #ifdef ASYNC
     for (auto &it : d.threadctxs)
         it.async_res = std::async(std::launch::async, [this, &input_gray, &input_rgb, &it]() -> void {
@@ -340,13 +335,19 @@ void KCF_Tracker::track(cv::Mat &img)
         scale_track(d.threadctxs[i], input_rgb, input_gray);
 #endif
 
+    max_response = -1.;
+    cv::Point2i *max_response_pt = nullptr;
+    cv::Mat *max_response_map = nullptr;
+    uint max_idx = 0;
+
 #ifndef BIG_BATCH
-    for (auto &it : d.threadctxs) {
+    for (uint j = 0; j < d.threadctxs.size(); ++j) {
+        ThreadCtx &it = d.threadctxs[j];
         if (it.max_response > max_response) {
             max_response = it.max_response;
             max_response_pt = &it.max_loc;
             max_response_map = &it.response;
-            max = &it;
+            max_idx = j;
         }
     }
 #else
@@ -356,7 +357,7 @@ void KCF_Tracker::track(cv::Mat &img)
             max_response = d.threadctxs[0].max_responses[j];
             max_response_pt = &d.threadctxs[0].max_locs[j];
             max_response_map = &d.threadctxs[0].response_maps[j];
-            max = &d.threadctxs[0];
+            max_idx = j;
         }
     }
 #endif
@@ -389,10 +390,9 @@ void KCF_Tracker::track(cv::Mat &img)
 
     // sub grid scale interpolation
     if (m_use_subgrid_scale) {
-        auto it = std::find_if(d.threadctxs.begin(), d.threadctxs.end(), [max](ThreadCtx &ctx) { return &ctx == max; });
-        p_current_scale *= sub_grid_scale(std::distance(d.threadctxs.begin(), it));
+        p_current_scale *= sub_grid_scale(max_idx);
     } else {
-        p_current_scale *= max->scale;
+        p_current_scale *= p_scales[max_idx];
     }
 
     clamp2(p_current_scale, p_min_max_scale[0], p_min_max_scale[1]);
