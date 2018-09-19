@@ -696,9 +696,9 @@ void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, Comple
     //DEBUG_PRINTM(xyf);
     kcf.fft.inverse(xyf, ifft_res);
 #ifdef CUFFT
-    cuda_gaussian_correlation(ifft_res.deviceMem(), vars.gauss_corr_res.deviceMem(),
-                              vars.gc.xf_sqr_norm.deviceMem(), vars.gc.xf_sqr_norm.deviceMem(), sigma, xf.n_channels,
-                              xf.n_scales, p_roi.height, p_roi.width);
+    cuda_gaussian_correlation(ifft_res.deviceMem(), k.deviceMem(), xf_sqr_norm.deviceMem(),
+                              auto_correlation ? xf_sqr_norm.deviceMem() : yf_sqr_norm.deviceMem(), sigma,
+                              xf.n_channels, xf.n_scales, kcf.p_roi.height, kcf.p_roi.width);
 #else
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
     //DEBUG_PRINTM(vars.ifft2_res);
@@ -736,8 +736,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, Comple
         DEBUG_PRINTM(in_roi);
     }
 #endif
-    DEBUG_PRINTM(vars.in_all);
-    fft.forward(vars.in_all, auto_correlation ? vars.kf : vars.kzf, m_use_cuda ? vars.gauss_corr_res.deviceMem() : nullptr);
+    kcf.fft.forward(k, result);
     return;
 }
 
