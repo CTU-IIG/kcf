@@ -170,7 +170,7 @@ void Fftw::set_window(const MatDynMem &window)
     m_window = window;
 }
 
-void Fftw::forward(MatDynMem &&real_input, ComplexMat & complex_result)
+void Fftw::forward(const MatDynMem &real_input, ComplexMat &complex_result)
 {
     Fft::forward(real_input, complex_result);
 
