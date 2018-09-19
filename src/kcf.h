@@ -143,8 +143,8 @@ private:
         GaussianCorrelation(cv::Size size, uint num_scales, uint num_feats)
             : xf_sqr_norm(num_scales)
             , xyf(Fft::freq_size(size), num_scales)
-            , ifft_res({int(num_feats * num_scales), size.height, size.width}, CV_32F)
-            , k({int(num_scales), size.height, size.width}, CV_32F)
+            , ifft_res({{int(num_feats * num_scales), size.height, size.width}}, CV_32F)
+            , k({{int(num_scales), size.height, size.width}}, CV_32F)
         {}
         void operator()(const KCF_Tracker &kcf, ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation = false);
 
