@@ -27,7 +27,7 @@ template <typename T> class DynMem_ {
         CudaSafeCall(cudaHostAlloc(reinterpret_cast<void **>(&ptr_h), size, cudaHostAllocMapped));
         CudaSafeCall(cudaHostGetDevicePointer(reinterpret_cast<void **>(&ptr_d), reinterpret_cast<void *>(ptr_h), 0));
 #else
-        ptr_h = new float[size];
+        ptr_h = new T[size];
 #endif
     }
     DynMem_(DynMem_&& other) {
