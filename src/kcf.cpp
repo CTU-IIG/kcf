@@ -66,7 +66,7 @@ KCF_Tracker::~KCF_Tracker()
 void KCF_Tracker::train(cv::Mat input_gray, cv::Mat input_rgb, double interp_factor)
 {
     // obtain a sub-window for training
-    int sizes[3] = {p_num_of_feats, p_windows_size.height, p_windows_size.width};
+    int sizes[3] = {p_num_of_feats, p_windows_size.height/p_cell_size, p_windows_size.width/p_cell_size};
     MatDynMem patch_feats(3, sizes, CV_32FC1);
     MatDynMem temp(3, sizes, CV_32FC1);
     get_features(patch_feats, input_rgb, input_gray, p_pose.cx, p_pose.cy,
@@ -101,6 +101,7 @@ void KCF_Tracker::train(cv::Mat input_gray, cv::Mat input_rgb, double interp_fac
 
 void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int fit_size_y)
 {
+    kcf_debug = m_debug;
     // check boundary, enforce min size
     double x1 = bbox.x, x2 = bbox.x + bbox.width, y1 = bbox.y, y2 = bbox.y + bbox.height;
     if (x1 < 0) x1 = 0.;
@@ -239,7 +240,6 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 
     fft.init(p_roi.width, p_roi.height, p_num_of_feats, p_num_scales);
     fft.set_window(MatDynMem(cosine_window_function(p_roi.width, p_roi.height)));
-
     // window weights, i.e. labels
     fft.forward(gaussian_shaped_labels(p_output_sigma, p_roi.width, p_roi.height), p_yf);
     DEBUG_PRINTM(p_yf);
@@ -469,8 +469,8 @@ void KCF_Tracker::get_features(MatDynMem &result_3d, cv::Mat &input_rgb, cv::Mat
                                int size_x, int size_y, double scale) const
 {
     assert(result_3d.size[0] == p_num_of_feats);
-    assert(result_3d.size[1] == size_x);
-    assert(result_3d.size[2] == size_y);
+    assert(result_3d.size[1] == size_y/p_cell_size);
+    assert(result_3d.size[2] == size_x/p_cell_size);
 
     int size_x_scaled = floor(size_x * scale);
     int size_y_scaled = floor(size_y * scale);
@@ -522,7 +522,7 @@ void KCF_Tracker::get_features(MatDynMem &result_3d, cv::Mat &input_rgb, cv::Mat
 
     for (uint i = 0; i < hog_feat.size(); ++i) {
         cv::Mat result_plane(result_3d.dims - 1, result_3d.size + 1, result_3d.cv::Mat::type(), result_3d.ptr<void>(i));
-        result_plane = hog_feat[i];
+        hog_feat[i].copyTo(result_plane);
     }
 }
 
