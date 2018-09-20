@@ -314,22 +314,22 @@ void KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2f &new_location) const
     double max = -1.;
 #ifndef BIG_BATCH
     for (uint j = 0; j < d.threadctxs.size(); ++j) {
-        if (d.threadctxs[j].max_response > max) {
-            max = d.threadctxs[j].max_response;
+        if (d.threadctxs[j].max.response > max) {
+            max = d.threadctxs[j].max.response;
             max_idx = j;
         }
     }
 #else
     // FIXME: Iterate correctly in big batch mode - perhaps have only one element in the list
     for (uint j = 0; j < p_scales.size(); ++j) {
-        if (d.threadctxs[0].max_responses[j] > max) {
-            max = d.threadctxs[0].max_responses[j];
+        if (d.threadctxs[0].max[j].response > max) {
+            max = d.threadctxs[0].max[j].response;
             max_idx = j;
         }
     }
 #endif
-    cv::Point2i &max_response_pt = IF_BIG_BATCH(d.threadctxs[0].max_locs[max_idx],      d.threadctxs[max_idx].max_loc);
-    cv::Mat &max_response_map    = IF_BIG_BATCH(d.threadctxs[0].response_maps[max_idx], d.threadctxs[max_idx].response);
+    cv::Point2i &max_response_pt = IF_BIG_BATCH(d.threadctxs[0].max[max_idx].loc,        d.threadctxs[max_idx].max.loc);
+    cv::Mat max_response_map     = IF_BIG_BATCH(d.threadctxs[0].response.plane(max_idx), d.threadctxs[max_idx].response);
 
     DEBUG_PRINTM(max_response_map);
     DEBUG_PRINT(max_response_pt);
@@ -442,29 +442,25 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
     account the fact that, if the target doesn't move, the peak
     will appear at the top-left corner, not at the center (this is
     discussed in the paper). the responses wrap around cyclically. */
+    double min_val, max_val;
+    cv::Point2i min_loc, max_loc;
 #ifdef BIG_BATCH
-    cv::split(response, response_maps);
-
     for (size_t i = 0; i < kcf.p_scales.size(); ++i) {
-        double min_val, max_val;
-        cv::Point2i min_loc, max_loc;
-        cv::minMaxLoc(response_maps[i], &min_val, &max_val, &min_loc, &max_loc);
+        cv::minMaxLoc(response.plane(i), &min_val, &max_val, &min_loc, &max_loc);
         DEBUG_PRINT(max_loc);
         double weight = kcf.p_scales[i] < 1. ? kcf.p_scales[i] : 1. / kcf.p_scales[i];
-        max_responses[i] = max_val * weight;
-        max_locs[i] = max_loc;
+        max[i].response = max_val * weight;
+        max[i].loc = max_loc;
     }
 #else
-    double min_val;
-    cv::Point2i min_loc;
     cv::minMaxLoc(response, &min_val, &max_val, &min_loc, &max_loc);
 
     DEBUG_PRINT(max_loc);
 
     double weight = scale < 1. ? scale : 1. / scale;
-    max_response = max_val * weight;
+    max.response = max_val * weight;
+    max.loc = max_loc;
 #endif
-    return;
 }
 
 // ****************************************************************************
@@ -814,11 +810,7 @@ double KCF_Tracker::sub_grid_scale(uint index)
             A.at<float>(i, 0) = float(p_scales[i] * p_scales[i]);
             A.at<float>(i, 1) = float(p_scales[i]);
             A.at<float>(i, 2) = 1;
-#ifdef BIG_BATCH
-            fval.at<float>(i) = d.threadctxs.back().max_responses[i];
-#else
-            fval.at<float>(i) = d.threadctxs[i].max_response;
-#endif
+            fval.at<float>(i) = d.threadctxs.back().IF_BIG_BATCH(max[i].response, max.response);
         }
     } else {
         // only from neighbours
@@ -831,14 +823,14 @@ double KCF_Tracker::sub_grid_scale(uint index)
              p_scales[index + 1] * p_scales[index + 1], p_scales[index + 1], 1);
 #ifdef BIG_BATCH
         fval = (cv::Mat_<float>(3, 1) <<
-                d.threadctxs.back().max_responses[index - 1],
-                d.threadctxs.back().max_responses[index + 0],
-                d.threadctxs.back().max_responses[index + 1]);
+                d.threadctxs.back().max[index - 1].response,
+                d.threadctxs.back().max[index + 0].response,
+                d.threadctxs.back().max[index + 1].response);
 #else
         fval = (cv::Mat_<float>(3, 1) <<
-                d.threadctxs[index - 1].max_response,
-                d.threadctxs[index + 0].max_response,
-                d.threadctxs[index + 1].max_response);
+                d.threadctxs[index - 1].max.response,
+                d.threadctxs[index + 0].max.response,
+                d.threadctxs[index + 1].max.response);
 #endif
     }
 

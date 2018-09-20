@@ -95,6 +95,12 @@ class MatDynMem : public DynMem, public cv::Mat {
     void operator=(const cv::MatExpr &expr) {
         static_cast<cv::Mat>(*this) = expr;
     }
+
+    cv::Mat plane(uint i) {
+        assert(dims == 3);
+        assert(int(i) < size[0]);
+        return cv::Mat(dims - 1, size + 1, cv::Mat::type(), ptr(i));
+    }
   private:
     static int volume(int ndims, const int *sizes)
     {

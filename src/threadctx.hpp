@@ -52,14 +52,15 @@ public:
 
     MatDynMem response{roi, CV_32FC(int(num_of_scales))};
 
+    struct Max {
+        cv::Point2i loc;
+        double response;
+    };
+
 #ifdef BIG_BATCH
-    // Stores value of responses, location of maximal response and response maps for each scale
-    std::vector<double> max_responses = std::vector<double>(num_of_scales);
-    std::vector<cv::Point2i> max_locs = std::vector<cv::Point2i>(num_of_scales);
-    std::vector<cv::Mat> response_maps = std::vector<cv::Mat>(num_of_scales);
+    std::vector<Max> max = std::vector<Max>(num_of_scales);
 #else
-    cv::Point2i max_loc;
-    double max_val, max_response;
+    Max max;
     const double scale;
 #endif
 };
