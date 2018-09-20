@@ -76,7 +76,7 @@ class MatDynMem : public DynMem, public cv::Mat {
         assert((type & CV_MAT_DEPTH_MASK) == CV_32F);
     }
     MatDynMem(int height, int width, int type)
-        : DynMem(width * height * sizeof(DynMem::type) * CV_MAT_CN(type)), cv::Mat(height, width, type, hostMem())
+        : DynMem(width * height * CV_MAT_CN(type)), cv::Mat(height, width, type, hostMem())
     {
         assert((type & CV_MAT_DEPTH_MASK) == CV_32F);
     }

@@ -140,7 +140,7 @@ private:
 
       private:
         DynMem xf_sqr_norm;
-        DynMem yf_sqr_norm{sizeof(float)};
+        DynMem yf_sqr_norm{1};
         ComplexMat xyf;
         MatDynMem ifft_res;
         MatDynMem k;
