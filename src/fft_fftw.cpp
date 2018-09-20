@@ -190,8 +190,8 @@ void Fftw::forward_window(MatDynMem &feat, ComplexMat & complex_result, MatDynMe
 
     int n_channels = feat.size[0];
     for (int i = 0; i < n_channels; ++i) {
-        cv::Mat feat_plane(feat.dims - 1, feat.size + 1, feat.cv::Mat::type(), feat.ptr<void>(i));
-        cv::Mat temp_plane(temp.dims - 1, temp.size + 1, temp.cv::Mat::type(), temp.ptr(i));
+        cv::Mat feat_plane = feat.plane(i);
+        cv::Mat temp_plane = temp.plane(i);
         temp_plane = feat_plane.mul(m_window);
     }
 

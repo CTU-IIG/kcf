@@ -27,7 +27,7 @@ void FftOpencv::forward_window(MatDynMem &feat, ComplexMat &complex_result, MatD
     uint n_channels = feat.size[0];
     for (uint i = 0; i < n_channels; ++i) {
         cv::Mat complex_res;
-        cv::Mat channel(feat.dims - 1, feat.size + 1, feat.cv::Mat::type(), feat.ptr(i));
+        cv::Mat channel = feat.plane(i);
         cv::dft(channel.mul(m_window), complex_res, cv::DFT_COMPLEX_OUTPUT);
         complex_result.set_channel(int(i), complex_res);
     }

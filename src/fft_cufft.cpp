@@ -85,8 +85,8 @@ void cuFFT::forward_window(MatDynMem &feat, ComplexMat &complex_result, MatDynMe
     cufftReal *temp_data = temp.deviceMem();
 
     for (uint i = 0; i < n_channels; ++i) {
-        cv::Mat feat_plane(feat.dims - 1, feat.size + 1, feat.cv::Mat::type(), feat.ptr<void>(i));
-        cv::Mat temp_plane(temp.dims - 1, temp.size + 1, temp.cv::Mat::type(), temp.ptr(i));
+        cv::Mat feat_plane = feat.plane(i);
+        cv::Mat temp_plane = temp.plane(i);
         temp_plane = feat_plane.mul(m_window);
     }
     CufftErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_p_data()));
