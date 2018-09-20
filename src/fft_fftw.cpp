@@ -16,7 +16,16 @@ Fftw::Fftw(){}
 
 void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales)
 {
-    Fft::init(width, height, num_of_feats, num_of_scales);
+//    TODO: This is not working as intended or is there something I am missing?
+//    Fft::init(width, height, num_of_feats, num_of_scales);
+    m_width = width;
+    m_height = height;
+    m_num_of_feats = num_of_feats;
+#ifdef BIG_BATCH
+    m_num_of_scales = num_of_scales;
+#else
+    (void)num_of_scales;
+#endif
 
 #if (!defined(ASYNC) && !defined(CUFFTW)) && defined(OPENMP)
     fftw_init_threads();
