@@ -87,7 +87,8 @@ void KCF_Tracker::train(cv::Mat input_gray, cv::Mat input_rgb, double interp_fac
         const uint num_scales = BIG_BATCH_MODE ? p_num_scales : 1;
         cv::Size sz(Fft::freq_size(p_roi));
         ComplexMat kf(sz.height, sz.width, num_scales);
-        (*gaussian_correlation)(*this, kf, p_model_xf, p_model_xf, p_kernel_sigma, true);
+        //TODO: This is clearly wrong and needs to be chek
+        (*d.threadctxs[0].get_gaussian_correlation())(*this, kf, p_model_xf, p_model_xf, p_kernel_sigma, true);
         DEBUG_PRINTM(kf);
         p_model_alphaf_num = p_yf * kf;
         DEBUG_PRINTM(p_model_alphaf_num);

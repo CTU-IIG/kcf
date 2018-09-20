@@ -52,6 +52,11 @@ public:
 
     MatDynMem response{roi, CV_32FC(int(num_of_scales))};
 
+    KCF_Tracker::GaussianCorrelation* get_gaussian_correlation()
+    {
+        return &gaussian_correlation;
+    }
+
     struct Max {
         cv::Point2i loc;
         double response;
