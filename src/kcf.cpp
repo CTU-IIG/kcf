@@ -367,7 +367,7 @@ void KCF_Tracker::track(cv::Mat &img)
 #ifdef ASYNC
     for (auto &it : d.threadctxs)
         it.async_res = std::async(std::launch::async, [this, &input_gray, &input_rgb, &it]() -> void {
-            scale_track(it, input_rgb, input_gray);
+            it.track(*this, input_rgb, input_gray);
         });
     for (auto const &it : d.threadctxs)
         it.async_res.wait();
@@ -376,7 +376,7 @@ void KCF_Tracker::track(cv::Mat &img)
     // FIXME: Iterate correctly in big batch mode - perhaps have only one element in the list
     NORMAL_OMP_PARALLEL_FOR
     for (uint i = 0; i < d.threadctxs.size(); ++i)
-        scale_track(d.threadctxs[i], input_rgb, input_gray);
+        d.threadctxs[i].track(*this, input_rgb, input_gray);
 #endif
 
     cv::Point2f new_location;
@@ -406,70 +406,71 @@ void KCF_Tracker::track(cv::Mat &img)
     train(input_rgb, input_gray, p_interp_factor);
 }
 
-void KCF_Tracker::scale_track(ThreadCtx &vars, cv::Mat &input_rgb, cv::Mat &input_gray)
+void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray)
 {
     // TODO: Move matrices to thread ctx
-    int sizes[3] = {p_num_of_feats, p_windows_size.height, p_windows_size.width};
+    int sizes[3] = {kcf.p_num_of_feats, kcf.p_windows_size.height, kcf.p_windows_size.width};
     MatDynMem patch_feats(3, sizes, CV_32FC1);
     MatDynMem temp(3, sizes, CV_32FC1);
 
 #ifdef BIG_BATCH
     BIG_BATCH_OMP_PARALLEL_FOR
-    for (uint i = 0; i < p_num_scales; ++i)
+    for (uint i = 0; i < kcf.p_num_scales; ++i)
 #endif
     {
-        get_features(patch_feats, input_rgb, input_gray, this->p_pose.cx, this->p_pose.cy,
-                     this->p_windows_size.width, this->p_windows_size.height,
-                     this->p_current_scale * IF_BIG_BATCH(this->p_scales[i], vars.scale));
+        kcf.get_features(patch_feats, input_rgb, input_gray, kcf.p_pose.cx, kcf.p_pose.cy,
+                         kcf.p_windows_size.width, kcf.p_windows_size.height,
+                         kcf.p_current_scale * IF_BIG_BATCH(kcf.p_scales[i], scale));
     }
 
-    fft.forward_window(patch_feats, vars.zf, temp);
-    DEBUG_PRINTM(vars.zf);
+    kcf.fft.forward_window(patch_feats, zf, temp);
+    DEBUG_PRINTM(zf);
 
-    if (m_use_linearkernel) {
-        vars.kzf = vars.zf.mul(p_model_alphaf).sum_over_channels();
+    if (kcf.m_use_linearkernel) {
+        kzf = zf.mul(kcf.p_model_alphaf).sum_over_channels();
     } else {
-        (*gaussian_correlation)(*this, vars.kzf, vars.zf, this->p_model_xf, this->p_kernel_sigma);
-        DEBUG_PRINTM(this->p_model_alphaf);
-        DEBUG_PRINTM(vars.kzf);
-        vars.kzf = vars.kzf.mul(this->p_model_alphaf);
+        gaussian_correlation(kcf, kzf, zf, kcf.p_model_xf, kcf.p_kernel_sigma);
+        DEBUG_PRINTM(kcf.p_model_alphaf);
+        DEBUG_PRINTM(kzf);
+        kzf = kzf.mul(kcf.p_model_alphaf);
     }
-    fft.inverse(vars.kzf, vars.response);
+    kcf.fft.inverse(kzf, response);
 
-    DEBUG_PRINTM(vars.response);
+    DEBUG_PRINTM(response);
 
     /* target location is at the maximum response. we must take into
     account the fact that, if the target doesn't move, the peak
     will appear at the top-left corner, not at the center (this is
     discussed in the paper). the responses wrap around cyclically. */
 #ifdef BIG_BATCH
-    cv::split(vars.response, vars.response_maps);
+    cv::split(response, response_maps);
 
-    for (size_t i = 0; i < p_scales.size(); ++i) {
+    for (size_t i = 0; i < kcf.p_scales.size(); ++i) {
         double min_val, max_val;
         cv::Point2i min_loc, max_loc;
-        cv::minMaxLoc(vars.response_maps[i], &min_val, &max_val, &min_loc, &max_loc);
+        cv::minMaxLoc(response_maps[i], &min_val, &max_val, &min_loc, &max_loc);
         DEBUG_PRINT(max_loc);
-        double weight = p_scales[i] < 1. ? p_scales[i] : 1. / p_scales[i];
-        vars.max_responses[i] = max_val * weight;
-        vars.max_locs[i] = max_loc;
+        double weight = kcf.p_scales[i] < 1. ? kcf.p_scales[i] : 1. / kcf.p_scales[i];
+        max_responses[i] = max_val * weight;
+        max_locs[i] = max_loc;
     }
 #else
     double min_val;
     cv::Point2i min_loc;
-    cv::minMaxLoc(vars.response, &min_val, &vars.max_val, &min_loc, &vars.max_loc);
+    cv::minMaxLoc(response, &min_val, &max_val, &min_loc, &max_loc);
 
-    DEBUG_PRINT(vars.max_loc);
+    DEBUG_PRINT(max_loc);
 
-    double weight = vars.scale < 1. ? vars.scale : 1. / vars.scale;
-    vars.max_response = vars.max_val * weight;
+    double weight = scale < 1. ? scale : 1. / scale;
+    max_response = max_val * weight;
 #endif
     return;
 }
 
 // ****************************************************************************
 
-void KCF_Tracker::get_features(MatDynMem &result_3d, cv::Mat & input_rgb, cv::Mat & input_gray, int cx, int cy, int size_x, int size_y, double scale)
+void KCF_Tracker::get_features(MatDynMem &result_3d, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy,
+                               int size_x, int size_y, double scale) const
 {
     assert(result_3d.size[0] == p_num_of_feats);
     assert(result_3d.size[1] == size_x);
@@ -634,7 +635,7 @@ cv::Mat KCF_Tracker::cosine_window_function(int dim1, int dim2)
 // Returns sub-window of image input centered at [cx, cy] coordinates),
 // with size [width, height]. If any pixels are outside of the image,
 // they will replicate the values at the borders.
-cv::Mat KCF_Tracker::get_subwindow(const cv::Mat &input, int cx, int cy, int width, int height)
+cv::Mat KCF_Tracker::get_subwindow(const cv::Mat &input, int cx, int cy, int width, int height) const
 {
     cv::Mat patch;
 

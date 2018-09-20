@@ -72,7 +72,7 @@ class ComplexMat {
         CudaSafeCall(cudaMalloc(&p_data, n_channels * cols * rows * sizeof(cufftComplex)));
     }
     // cv::Mat API compatibility
-    cv::Size size() { return cv::Size(cols, rows); }
+    cv::Size size() const { return cv::Size(cols, rows); }
     int channels() { return n_channels; }
     int channels() const { return n_channels; }
 

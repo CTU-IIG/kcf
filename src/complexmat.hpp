@@ -54,7 +54,7 @@ template <typename T> class ComplexMat_ {
         p_data.resize(n_channels * cols * rows);
     }
     // cv::Mat API compatibility
-    cv::Size size() { return cv::Size(cols, rows); }
+    cv::Size size() const { return cv::Size(cols, rows); }
     uint channels() const { return n_channels; }
 
     // assuming that mat has 2 channels (real, imag)
