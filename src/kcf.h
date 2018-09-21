@@ -130,11 +130,11 @@ private:
 
     class GaussianCorrelation {
       public:
-        GaussianCorrelation(cv::Size size, uint num_scales, uint num_feats)
+        GaussianCorrelation(uint num_scales, uint num_feats, cv::Size size)
             : xf_sqr_norm(num_scales)
             , xyf(Fft::freq_size(size), num_scales)
-            , ifft_res({{int(num_feats * num_scales), size.height, size.width}}, CV_32F)
-            , k({{int(num_scales), size.height, size.width}}, CV_32F)
+            , ifft_res(num_scales, num_feats, size)
+            , k(num_scales, size)
         {}
         void operator()(const KCF_Tracker &kcf, ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation = false);
 
@@ -142,18 +142,18 @@ private:
         DynMem xf_sqr_norm;
         DynMem yf_sqr_norm{1};
         ComplexMat xyf;
-        MatDynMem ifft_res;
-        MatDynMem k;
+        MatScaleFeats ifft_res;
+        MatScales k;
     };
 
     //helping functions
     void scale_track(ThreadCtx &vars, cv::Mat &input_rgb, cv::Mat &input_gray);
     cv::Mat get_subwindow(const cv::Mat &input, int cx, int cy, int size_x, int size_y) const;
-    MatDynMem gaussian_shaped_labels(double sigma, int dim1, int dim2);
+    cv::Mat gaussian_shaped_labels(double sigma, int dim1, int dim2);
     std::unique_ptr<GaussianCorrelation> gaussian_correlation;
-    MatDynMem circshift(const cv::Mat &patch, int x_rot, int y_rot);
+    cv::Mat circshift(const cv::Mat &patch, int x_rot, int y_rot);
     cv::Mat cosine_window_function(int dim1, int dim2);
-    void get_features(MatDynMem &feat_3d, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy, int size_x, int size_y, double scale) const;
+    void get_features(MatFeats &result, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy, int size_x, int size_y, double scale) const;
     cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const;
     double sub_grid_scale(uint index);
     void resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray);

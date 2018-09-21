@@ -28,7 +28,7 @@ static bool kcf_debug = false;
 #define DEBUG_PRINTM(obj)                                                                                              \
     if (kcf_debug) {                                                                                                     \
         std::cout << #obj << " @" << __LINE__ << " " << (obj).size() << " CH: " << (obj).channels() << std::endl       \
-                  << (obj) << std::endl;                                                                               \
+                  /*<< (obj)*/ << std::endl;                                                                               \
     }
 
 template <typename T>
@@ -66,9 +66,9 @@ KCF_Tracker::~KCF_Tracker()
 void KCF_Tracker::train(cv::Mat input_gray, cv::Mat input_rgb, double interp_factor)
 {
     // obtain a sub-window for training
-    int sizes[3] = {p_num_of_feats, p_roi.height, p_roi.width};
-    MatDynMem patch_feats(3, sizes, CV_32FC1);
-    MatDynMem temp(3, sizes, CV_32FC1);
+    // TODO: Move Mats outside from here
+    MatFeats patch_feats(p_num_of_feats, p_roi);
+    MatFeats temp(p_num_of_feats, p_roi);
     get_features(patch_feats, input_rgb, input_gray, p_pose.cx, p_pose.cy,
                  p_windows_size.width, p_windows_size.height,
                  p_current_scale);
@@ -217,13 +217,14 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 
 #ifndef BIG_BATCH
     for (auto scale: p_scales)
-        d.threadctxs.emplace_back(p_roi, p_num_of_feats, 1, scale);
+        d.threadctxs.emplace_back(p_roi, p_num_of_feats, scale);
 #else
-    d.threadctxs.emplace_back(p_roi, p_num_of_feats * p_num_scales, p_num_scales);
+    d.threadctxs.emplace_back(p_roi, p_num_of_feats, p_num_scales);
 #endif
 
-    gaussian_correlation.reset(new GaussianCorrelation(p_roi, IF_BIG_BATCH(p_num_scales, 1),
-                                                       p_num_of_feats * IF_BIG_BATCH(p_num_scales, 1)));
+    gaussian_correlation.reset(
+                new GaussianCorrelation(IF_BIG_BATCH(p_num_scales, 1),
+                                        p_num_of_feats, p_roi));
 
     p_current_scale = 1.;
 
@@ -245,7 +246,9 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     fft.set_window(MatDynMem(cosine_window_function(p_roi.width, p_roi.height)));
 
     // window weights, i.e. labels
-    fft.forward(gaussian_shaped_labels(p_output_sigma, p_roi.width, p_roi.height), p_yf);
+    MatScales gsl(1, p_roi);
+    gaussian_shaped_labels(p_output_sigma, p_roi.width, p_roi.height).copyTo(gsl.plane(0));
+    fft.forward(gsl, p_yf);
     DEBUG_PRINTM(p_yf);
 
     // train initial model
@@ -413,9 +416,8 @@ void KCF_Tracker::track(cv::Mat &img)
 void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray)
 {
     // TODO: Move matrices to thread ctx
-    int sizes[3] = {kcf.p_num_of_feats, kcf.p_windows_size.height, kcf.p_windows_size.width};
-    MatDynMem patch_feats(3, sizes, CV_32FC1);
-    MatDynMem temp(3, sizes, CV_32FC1);
+    MatFeats patch_feats(kcf.p_num_of_feats, kcf.p_roi);
+    MatFeats temp(kcf.p_num_of_feats, kcf.p_roi);
 
 #ifdef BIG_BATCH
     BIG_BATCH_OMP_PARALLEL_FOR
@@ -469,12 +471,12 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
 
 // ****************************************************************************
 
-void KCF_Tracker::get_features(MatDynMem &result_3d, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy,
+void KCF_Tracker::get_features(MatFeats &result, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy,
                                int size_x, int size_y, double scale) const
 {
-    assert(result_3d.size[0] == p_num_of_feats);
-    assert(result_3d.size[1] == size_y / p_cell_size);
-    assert(result_3d.size[2] == size_x / p_cell_size);
+    assert(result.size[0] == p_num_of_feats);
+    assert(result.size[1] == size_y / p_cell_size);
+    assert(result.size[2] == size_x / p_cell_size);
 
     int size_x_scaled = floor(size_x * scale);
     int size_y_scaled = floor(size_y * scale);
@@ -524,15 +526,13 @@ void KCF_Tracker::get_features(MatDynMem &result_3d, cv::Mat &input_rgb, cv::Mat
 
     hog_feat.insert(hog_feat.end(), color_feat.begin(), color_feat.end());
 
-    for (uint i = 0; i < hog_feat.size(); ++i) {
-        cv::Mat result_plane(result_3d.dims - 1, result_3d.size + 1, result_3d.cv::Mat::type(), result_3d.ptr<void>(i));
-        hog_feat[i].copyTo(result_plane);
-    }
+    for (uint i = 0; i < hog_feat.size(); ++i)
+        hog_feat[i].copyTo(result.plane(i));
 }
 
-MatDynMem KCF_Tracker::gaussian_shaped_labels(double sigma, int dim1, int dim2)
+cv::Mat KCF_Tracker::gaussian_shaped_labels(double sigma, int dim1, int dim2)
 {
-    MatDynMem labels(dim2, dim1, CV_32FC1);
+    cv::Mat labels(dim2, dim1, CV_32FC1);
     int range_y[2] = {-dim2 / 2, dim2 - dim2 / 2};
     int range_x[2] = {-dim1 / 2, dim1 - dim1 / 2};
 
@@ -554,9 +554,9 @@ MatDynMem KCF_Tracker::gaussian_shaped_labels(double sigma, int dim1, int dim2)
     return rot_labels;
 }
 
-MatDynMem KCF_Tracker::circshift(const cv::Mat &patch, int x_rot, int y_rot)
+cv::Mat KCF_Tracker::circshift(const cv::Mat &patch, int x_rot, int y_rot)
 {
-    MatDynMem rot_patch(patch.size(), CV_32FC1);
+    cv::Mat rot_patch(patch.size(), CV_32FC1);
     cv::Mat tmp_x_rot(patch.size(), CV_32FC1);
 
     // circular rotate x-axis
@@ -734,7 +734,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, Comple
 
     float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / xf.n_scales));
     for (uint i = 0; i < xf.n_scales; ++i) {
-        cv::Mat k_roi(k, cv::Rect(0, i * scales[0].rows, scales[0].cols, scales[0].rows));
+        cv::Mat k_roi = k.plane(i);
         cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm[i] + yf_sqr_norm[0] - 2 * scales[i]) * numel_xf_inv, 0),
                 k_roi);
         DEBUG_PRINTM(k_roi);

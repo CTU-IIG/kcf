@@ -11,7 +11,7 @@ void FftOpencv::set_window(const MatDynMem &window)
     m_window = window;
 }
 
-void FftOpencv::forward(const MatDynMem &real_input, ComplexMat &complex_result)
+void FftOpencv::forward(const MatScales &real_input, ComplexMat &complex_result)
 {
     Fft::forward(real_input, complex_result);
 
@@ -20,16 +20,18 @@ void FftOpencv::forward(const MatDynMem &real_input, ComplexMat &complex_result)
     complex_result = ComplexMat(tmp);
 }
 
-void FftOpencv::forward_window(MatDynMem &feat, ComplexMat &complex_result, MatDynMem &temp)
+void FftOpencv::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatScaleFeats &temp)
 {
     Fft::forward_window(feat, complex_result, temp);
 
     uint n_channels = feat.size[0];
     for (uint i = 0; i < n_channels; ++i) {
-        cv::Mat complex_res;
-        cv::Mat channel = feat.plane(i);
-        cv::dft(channel.mul(m_window), complex_res, cv::DFT_COMPLEX_OUTPUT);
-        complex_result.set_channel(int(i), complex_res);
+        for (uint j = 0; j < uint(feat.size[1]); ++j) {
+            cv::Mat complex_res;
+            cv::Mat channel = feat.plane(i, j);
+            cv::dft(channel.mul(m_window), complex_res, cv::DFT_COMPLEX_OUTPUT);
+            complex_result.set_channel(int(i), complex_res);
+        }
     }
 }
 

@@ -151,7 +151,7 @@ void Fftw::set_window(const MatDynMem &window)
     m_window = window;
 }
 
-void Fftw::forward(const MatDynMem &real_input, ComplexMat &complex_result)
+void Fftw::forward(const MatScales &real_input, ComplexMat &complex_result)
 {
     Fft::forward(real_input, complex_result);
 
@@ -165,21 +165,23 @@ void Fftw::forward(const MatDynMem &real_input, ComplexMat &complex_result)
     return;
 }
 
-void Fftw::forward_window(MatDynMem &feat, ComplexMat & complex_result, MatDynMem &temp)
+void Fftw::forward_window(MatScaleFeats  &feat, ComplexMat & complex_result, MatScaleFeats &temp)
 {
     Fft::forward_window(feat, complex_result, temp);
 
-    int n_channels = feat.size[0];
-    for (int i = 0; i < n_channels; ++i) {
-        cv::Mat feat_plane = feat.plane(i);
-        cv::Mat temp_plane = temp.plane(i);
-        temp_plane = feat_plane.mul(m_window);
+    uint n_channels = feat.size[0];
+    for (uint i = 0; i < n_channels; ++i) {
+        for (uint j = 0; j < uint(feat.size[1]); ++j) {
+            cv::Mat feat_plane = feat.plane(i, j);
+            cv::Mat temp_plane = temp.plane(i, j);
+            temp_plane = feat_plane.mul(m_window);
+        }
     }
 
     float *in = temp.ptr<float>();
     fftwf_complex *out = reinterpret_cast<fftwf_complex *>(complex_result.get_p_data());
 
-    if (n_channels <= int(m_num_of_feats))
+    if (n_channels <= m_num_of_feats)
         fftwf_execute_dft_r2c(plan_fw, in, out);
     else
         fftwf_execute_dft_r2c(plan_fw_all_scales, in, out);

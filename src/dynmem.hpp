@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <opencv2/opencv.hpp>
 #include <cassert>
+#include <numeric>
 
 #if defined(CUFFT) || defined(CUFFTW)
 #include "cuda_runtime.h"
@@ -85,9 +86,9 @@ class MatDynMem : public DynMem, public cv::Mat {
     {
         assert((type & CV_MAT_DEPTH_MASK) == CV_32F);
     }
-    MatDynMem(std::array<int, 3> size, int type)
-        : DynMem(size[0] * size[1] * size[2]), cv::Mat(3, (int*)&size, type, hostMem())
-    {}
+    MatDynMem(std::vector<int> size, int type)
+        : DynMem(std::accumulate(size.begin(), size.end(), 1, std::multiplies<int>()))
+        , cv::Mat(size.size(), size.data(), type, hostMem()) {}
     MatDynMem(MatDynMem &&other) = default;
     MatDynMem(const cv::Mat &other)
         : DynMem(other.total()) , cv::Mat(other) {}
@@ -96,11 +97,6 @@ class MatDynMem : public DynMem, public cv::Mat {
         static_cast<cv::Mat>(*this) = expr;
     }
 
-    cv::Mat plane(uint i) {
-        assert(dims == 3);
-        assert(int(i) < size[0]);
-        return cv::Mat(dims - 1, size + 1, cv::Mat::type(), ptr(i));
-    }
   private:
     static int volume(int ndims, const int *sizes)
     {
@@ -111,6 +107,43 @@ class MatDynMem : public DynMem, public cv::Mat {
     }
 
     using cv::Mat::create;
+};
+
+class Mat3d : public MatDynMem
+{
+public:
+    Mat3d(uint dim0, cv::Size size) : MatDynMem({{int(dim0), size.height, size.width}}, CV_32F) {}
+
+    cv::Mat plane(uint idx) {
+        assert(dims == 3);
+        assert(int(idx) < size[0]);
+        return cv::Mat(size[1], size[2], cv::Mat::type(), ptr(idx));
+    }
+};
+
+class MatFeats : public Mat3d
+{
+public:
+    MatFeats(uint num_features, cv::Size size) : Mat3d(num_features, size) {}
+};
+class MatScales : public Mat3d
+{
+public:
+    MatScales(uint num_scales, cv::Size size) : Mat3d(num_scales, size) {}
+};
+
+class MatScaleFeats : public MatDynMem
+{
+public:
+    MatScaleFeats(uint num_scales, uint num_features, cv::Size size)
+        : MatDynMem({{int(num_scales), int(num_features), size.height, size.width}}, CV_32F) {}
+
+    cv::Mat plane(uint scale, uint feature) {
+        assert(dims == 4);
+        assert(int(scale) < size[0]);
+        assert(int(feature) < size[1]);
+        return cv::Mat(size[2], size[3], cv::Mat::type(), ptr(scale, feature));
+    }
 };
 
 #endif // DYNMEM_HPP

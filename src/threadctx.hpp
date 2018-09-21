@@ -15,14 +15,16 @@ class KCF_Tracker;
 
 struct ThreadCtx {
   public:
-    ThreadCtx(cv::Size roi, uint num_channels, uint num_of_scales
-#ifndef BIG_BATCH
+    ThreadCtx(cv::Size roi, uint num_features
+#ifdef BIG_BATCH
+              , uint num_of_scales
+#else
               , double scale
 #endif
              )
         : roi(roi)
-        , num_channels(num_channels)
-        , num_of_scales(num_of_scales)
+        , num_features(num_features)
+        , num_of_scales(IF_BIG_BATCH(num_of_scales, 1))
 #ifndef BIG_BATCH
         , scale(scale)
 #endif
@@ -33,23 +35,23 @@ struct ThreadCtx {
     void track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray);
 private:
     cv::Size roi;
-    uint num_channels;
+    uint num_features;
     uint num_of_scales;
     cv::Size freq_size = Fft::freq_size(roi);
 
 
-    KCF_Tracker::GaussianCorrelation gaussian_correlation{roi, num_of_scales, num_channels};
+    KCF_Tracker::GaussianCorrelation gaussian_correlation{num_of_scales, num_features, roi};
 
-    MatDynMem ifft2_res{roi, CV_32FC(int(num_channels))};
+    MatDynMem ifft2_res{roi, CV_32FC(int(num_features))};
 
-    ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_channels, num_of_scales};
+    ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_features, num_of_scales};
     ComplexMat kzf{uint(freq_size.height), uint(freq_size.width), num_of_scales};
 public:
 #ifdef ASYNC
     std::future<void> async_res;
 #endif
 
-    MatDynMem response{roi, CV_32FC(int(num_of_scales))};
+    MatScales response{num_of_scales, roi};
 
     struct Max {
         cv::Point2i loc;
