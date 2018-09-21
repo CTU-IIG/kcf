@@ -35,7 +35,7 @@ void FftOpencv::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, 
     }
 }
 
-void FftOpencv::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
+void FftOpencv::inverse(ComplexMat &  complex_input, MatScales & real_result)
 {
     Fft::inverse(complex_input, real_result);
 

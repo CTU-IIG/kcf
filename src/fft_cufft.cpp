@@ -94,7 +94,7 @@ void cuFFT::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatS
     cudaErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_p_data()));
 }
 
-void cuFFT::inverse(ComplexMat &complex_input, MatDynMem &real_result)
+void cuFFT::inverse(ComplexMat &complex_input, MatScales &real_result)
 {
     Fft::inverse(complex_input, real_result);
 

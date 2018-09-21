@@ -207,7 +207,7 @@ void Fftw::forward_window(MatScaleFeats  &feat, ComplexMat & complex_result, Mat
     return;
 }
 
-void Fftw::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
+void Fftw::inverse(ComplexMat &complex_input, MatScales &real_result)
 {
     Fft::inverse(complex_input, real_result);
 
@@ -224,7 +224,7 @@ void Fftw::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
     else
         fftwf_execute_dft_c2r(plan_i_features, in, out);
 
-    real_result = real_result / (m_width * m_height);
+    real_result *= 1 / (m_width * m_height);
 }
 
 Fftw::~Fftw()

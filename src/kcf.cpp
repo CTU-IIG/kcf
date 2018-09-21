@@ -67,11 +67,12 @@ void KCF_Tracker::train(cv::Mat input_gray, cv::Mat input_rgb, double interp_fac
 {
     // obtain a sub-window for training
     // TODO: Move Mats outside from here
-    MatFeats patch_feats(p_num_of_feats, p_roi);
-    MatFeats temp(p_num_of_feats, p_roi);
-    get_features(patch_feats, input_rgb, input_gray, p_pose.cx, p_pose.cy,
+    MatScaleFeats patch_feats(1, p_num_of_feats, p_roi);
+    MatScaleFeats temp(1, p_num_of_feats, p_roi);
+    get_features(input_rgb, input_gray, p_pose.cx, p_pose.cy,
                  p_windows_size.width, p_windows_size.height,
-                 p_current_scale);
+                 p_current_scale).copyTo(patch_feats.features(0));
+
     fft.forward_window(patch_feats, p_xf, temp);
     p_model_xf = p_model_xf * (1. - interp_factor) + p_xf * interp_factor;
     DEBUG_PRINTM(p_model_xf);
@@ -223,8 +224,7 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 #endif
 
     gaussian_correlation.reset(
-                new GaussianCorrelation(IF_BIG_BATCH(p_num_scales, 1),
-                                        p_num_of_feats, p_roi));
+                new GaussianCorrelation(IF_BIG_BATCH(p_num_scales, 1), p_roi));
 
     p_current_scale = 1.;
 
@@ -416,17 +416,16 @@ void KCF_Tracker::track(cv::Mat &img)
 void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray)
 {
     // TODO: Move matrices to thread ctx
-    MatFeats patch_feats(kcf.p_num_of_feats, kcf.p_roi);
-    MatFeats temp(kcf.p_num_of_feats, kcf.p_roi);
+    MatScaleFeats patch_feats(IF_BIG_BATCH(kcf.p_num_scales, 1), kcf.p_num_of_feats, kcf.p_roi);
+    MatScaleFeats temp(IF_BIG_BATCH(kcf.p_num_scales, 1), kcf.p_num_of_feats, kcf.p_roi);
 
-#ifdef BIG_BATCH
     BIG_BATCH_OMP_PARALLEL_FOR
-    for (uint i = 0; i < kcf.p_num_scales; ++i)
-#endif
+    for (uint i = 0; i < IF_BIG_BATCH(kcf.p_num_scales, 1); ++i)
     {
-        kcf.get_features(patch_feats, input_rgb, input_gray, kcf.p_pose.cx, kcf.p_pose.cy,
+        kcf.get_features(input_rgb, input_gray, kcf.p_pose.cx, kcf.p_pose.cy,
                          kcf.p_windows_size.width, kcf.p_windows_size.height,
-                         kcf.p_current_scale * IF_BIG_BATCH(kcf.p_scales[i], scale));
+                         kcf.p_current_scale * IF_BIG_BATCH(kcf.p_scales[i], scale))
+                .copyTo(patch_feats.features(i));
     }
 
     kcf.fft.forward_window(patch_feats, zf, temp);
@@ -471,13 +470,9 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
 
 // ****************************************************************************
 
-void KCF_Tracker::get_features(MatFeats &result, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy,
-                               int size_x, int size_y, double scale) const
+cv::Mat KCF_Tracker::get_features(cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy,
+                                  int size_x, int size_y, double scale) const
 {
-    assert(result.size[0] == p_num_of_feats);
-    assert(result.size[1] == size_y / p_cell_size);
-    assert(result.size[2] == size_x / p_cell_size);
-
     int size_x_scaled = floor(size_x * scale);
     int size_y_scaled = floor(size_y * scale);
 
@@ -526,8 +521,12 @@ void KCF_Tracker::get_features(MatFeats &result, cv::Mat &input_rgb, cv::Mat &in
 
     hog_feat.insert(hog_feat.end(), color_feat.begin(), color_feat.end());
 
+    int size[] = {p_num_of_feats, p_roi.height, p_roi.width};
+    cv::Mat result(3, size, CV_32F);
     for (uint i = 0; i < hog_feat.size(); ++i)
-        hog_feat[i].copyTo(result.plane(i));
+        hog_feat[i].copyTo(cv::Mat(size[1], size[2], CV_32FC1, result.ptr(i)));
+
+    return result;
 }
 
 cv::Mat KCF_Tracker::gaussian_shaped_labels(double sigma, int dim1, int dim2)
@@ -690,7 +689,7 @@ cv::Mat KCF_Tracker::get_subwindow(const cv::Mat &input, int cx, int cy, int wid
 }
 
 void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, ComplexMat &result, const ComplexMat &xf,
-                                                   const ComplexMat &yf, double sigma, bool auto_correlation)
+                                                  const ComplexMat &yf, double sigma, bool auto_correlation)
 {
     xf.sqr_norm(xf_sqr_norm);
     if (auto_correlation) {
@@ -698,7 +697,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(const KCF_Tracker &kcf, Comple
     } else {
         yf.sqr_norm(yf_sqr_norm);
     }
-    xyf = auto_correlation ? xf.sqr_mag() : xf.mul(yf.conj());
+    xyf = auto_correlation ? xf.sqr_mag() : xf * yf.conj(); // xf.muln(yf.conj());
     //DEBUG_PRINTM(xyf);
     kcf.fft.inverse(xyf, ifft_res);
 #ifdef CUFFT

@@ -130,10 +130,10 @@ private:
 
     class GaussianCorrelation {
       public:
-        GaussianCorrelation(uint num_scales, uint num_feats, cv::Size size)
+        GaussianCorrelation(uint num_scales, cv::Size size)
             : xf_sqr_norm(num_scales)
             , xyf(Fft::freq_size(size), num_scales)
-            , ifft_res(num_scales, num_feats, size)
+            , ifft_res(num_scales, size)
             , k(num_scales, size)
         {}
         void operator()(const KCF_Tracker &kcf, ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation = false);
@@ -142,7 +142,7 @@ private:
         DynMem xf_sqr_norm;
         DynMem yf_sqr_norm{1};
         ComplexMat xyf;
-        MatScaleFeats ifft_res;
+        MatScales ifft_res;
         MatScales k;
     };
 
@@ -153,7 +153,7 @@ private:
     std::unique_ptr<GaussianCorrelation> gaussian_correlation;
     cv::Mat circshift(const cv::Mat &patch, int x_rot, int y_rot);
     cv::Mat cosine_window_function(int dim1, int dim2);
-    void get_features(MatFeats &result, cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy, int size_x, int size_y, double scale) const;
+    cv::Mat get_features(cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy, int size_x, int size_y, double scale) const;
     cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const;
     double sub_grid_scale(uint index);
     void resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray);

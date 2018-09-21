@@ -38,18 +38,6 @@ void Fft::forward(const MatScales &real_input, ComplexMat &complex_result)
     (void)complex_result;
 }
 
-void Fft::forward_window(MatFeats &patch_feats, ComplexMat &complex_result, MatFeats &tmp)
-{
-        assert(patch_feats.dims == 3);
-        assert(patch_feats.size[0] == int(m_num_of_feats));
-        assert(patch_feats.size[1] == int(m_height));
-        assert(patch_feats.size[2] == int(m_width));
-
-        (void)tmp;
-        (void)complex_result;
-        (void)patch_feats;
-}
-
 void Fft::forward_window(MatScaleFeats &patch_feats, ComplexMat &complex_result, MatScaleFeats &tmp)
 {
         assert(patch_feats.dims == 4);
@@ -69,13 +57,12 @@ void Fft::forward_window(MatScaleFeats &patch_feats, ComplexMat &complex_result,
         (void)tmp;
 }
 
-void Fft::inverse(ComplexMat &complex_input, MatDynMem &real_result)
+void Fft::inverse(ComplexMat &complex_input, MatScales &real_result)
 {
-    assert(real_result.dims == 4);
+    assert(real_result.dims == 3);
     assert(real_result.size[0] == IF_BIG_BATCH(int(m_num_of_scales), 1));
-    assert(real_result.size[1] == int(m_num_of_feats));
-    assert(real_result.size[2] == int(m_height));
-    assert(real_result.size[3] == int(m_width));
+    assert(real_result.size[1] == int(m_height));
+    assert(real_result.size[2] == int(m_width));
 
     (void)complex_input;
     (void)real_result;

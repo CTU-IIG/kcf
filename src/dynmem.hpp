@@ -144,6 +144,11 @@ public:
         assert(int(feature) < size[1]);
         return cv::Mat(size[2], size[3], cv::Mat::type(), ptr(scale, feature));
     }
+    cv::Mat features(uint scale) {
+        assert(dims == 4);
+        assert(int(scale) < size[0]);
+        return cv::Mat(3, std::vector<int>({size[1], size[2], size[3]}).data(), cv::Mat::type(), ptr(scale));
+    }
 };
 
 #endif // DYNMEM_HPP

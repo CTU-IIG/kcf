@@ -176,6 +176,12 @@ template <typename T> class ComplexMat_ {
         return matn_mat1_operator([](std::complex<T> &c_lhs, const std::complex<T> &c_rhs) { c_lhs *= c_rhs; }, rhs);
     }
 
+    // multiplying element-wise multichannel mats - same as operator*(ComplexMat), but without allocating memory for the result
+    ComplexMat_<T> muln(const ComplexMat_<T> &rhs) const
+    {
+        return mat_mat_operator([](std::complex<T> &c_lhs, const std::complex<T> &c_rhs) { c_lhs *= c_rhs; }, rhs);
+    }
+
     // text output
     friend std::ostream &operator<<(std::ostream &os, const ComplexMat_<T> &mat)
     {
