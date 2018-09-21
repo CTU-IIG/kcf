@@ -25,8 +25,8 @@ public:
     void inverse(ComplexMat &complex_input, MatDynMem &real_result) override;
     ~Fftw() override;
 private:
-    unsigned m_width, m_height, m_num_of_feats, m_num_of_scales;
     cv::Mat m_window;
+    // TODO: Remove *_all_scales plans
     fftwf_plan plan_f, plan_f_all_scales, plan_fw, plan_fw_all_scales, plan_i_features,
 	plan_i_features_all_scales, plan_i_1ch, plan_i_1ch_all_scales;
 };

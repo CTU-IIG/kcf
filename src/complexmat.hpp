@@ -144,7 +144,7 @@ template <typename T> class ComplexMat_ {
         return result;
     }
 
-    std::complex<T> *get_p_data() const { return p_data.data(); }
+    std::complex<T> *get_p_data() { return p_data.data(); }
 
     // element-wise per channel multiplication, division and addition
     ComplexMat_<T> operator*(const ComplexMat_<T> &rhs) const
@@ -192,7 +192,7 @@ template <typename T> class ComplexMat_ {
     }
 
   private:
-    mutable std::vector<std::complex<T>> p_data;
+    std::vector<std::complex<T>> p_data;
 
     // convert 2 channel mat (real, imag) to vector row-by-row
     std::vector<std::complex<T>> convert(const cv::Mat &mat)

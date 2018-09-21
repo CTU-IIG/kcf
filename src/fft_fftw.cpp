@@ -17,23 +17,6 @@ Fftw::Fftw(){}
 void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales)
 {
     Fft::init(width, height, num_of_feats, num_of_scales);
-    m_width = width;
-    m_height = height;
-    m_num_of_feats = num_of_feats;
-#ifdef BIG_BATCH
-    m_num_of_scales = num_of_scales;
-#else
-    (void)num_of_scales;
-#endif
-
-    m_width = width;
-    m_height = height;
-    m_num_of_feats = num_of_feats;
-#ifdef BIG_BATCH
-    m_num_of_scales = num_of_scales;
-#else
-    (void)num_of_scales;
-#endif
 
 #if (!defined(ASYNC) && !defined(CUFFTW)) && defined(OPENMP)
     fftw_init_threads();
@@ -191,7 +174,7 @@ void Fftw::forward(const MatDynMem &real_input, ComplexMat &complex_result)
 {
     Fft::forward(real_input, complex_result);
 
-    if (BIG_BATCH_MODE && real_input.rows == int(m_height * m_num_of_scales)) {
+    if (BIG_BATCH_MODE && real_input.rows == int(m_height * IF_BIG_BATCH(m_num_of_scales, 1))) {
         fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
                               reinterpret_cast<fftwf_complex *>(complex_result.get_p_data()));
     } else {
@@ -232,9 +215,9 @@ void Fftw::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
 
     if (n_channels == 1)
         fftwf_execute_dft_c2r(plan_i_1ch, in, out);
-    else if (BIG_BATCH_MODE && n_channels == int(m_num_of_scales))
+    else if (BIG_BATCH_MODE && n_channels == int(IF_BIG_BATCH(m_num_of_scales, 1)))
         fftwf_execute_dft_c2r(plan_i_1ch_all_scales, in, out);
-    else if (BIG_BATCH_MODE && n_channels == int(m_num_of_feats) * int(m_num_of_scales))
+    else if (BIG_BATCH_MODE && n_channels == int(m_num_of_feats) * int(IF_BIG_BATCH(m_num_of_scales, 1)))
         fftwf_execute_dft_c2r(plan_i_features_all_scales, in, out);
     else
         fftwf_execute_dft_c2r(plan_i_features, in, out);

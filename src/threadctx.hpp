@@ -29,6 +29,7 @@ struct ThreadCtx {
     {}
 
     ThreadCtx(ThreadCtx &&) = default;
+<<<<<<< HEAD
 
     void track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray);
 private:
@@ -45,6 +46,24 @@ private:
     ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_channels, num_of_scales};
     ComplexMat kzf{uint(freq_size.height), uint(freq_size.width), num_of_scales};
 
+=======
+
+    void track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray);
+private:
+    cv::Size roi;
+    uint num_channels;
+    uint num_of_scales;
+    cv::Size freq_size = Fft::freq_size(roi);
+
+
+    KCF_Tracker::GaussianCorrelation gaussian_correlation{roi, num_of_scales, num_channels};
+
+    MatDynMem ifft2_res{roi, CV_32FC(int(num_channels))};
+
+    ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_channels, num_of_scales};
+    ComplexMat kzf{uint(freq_size.height), uint(freq_size.width), num_of_scales};
+
+>>>>>>> upstream/test
 public:
 #ifdef ASYNC
     std::future<void> async_res;
@@ -52,11 +71,14 @@ public:
 
     MatDynMem response{roi, CV_32FC(int(num_of_scales))};
 
+<<<<<<< HEAD
     KCF_Tracker::GaussianCorrelation* get_gaussian_correlation()
     {
         return &gaussian_correlation;
     }
 
+=======
+>>>>>>> upstream/test
     struct Max {
         cv::Point2i loc;
         double response;

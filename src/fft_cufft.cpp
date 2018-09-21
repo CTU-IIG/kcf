@@ -3,7 +3,7 @@
 
 cuFFT::cuFFT()
 {
-    CublasErrorCheck(cublasCreate(&cublas));
+    cudaErrorCheck(cublasCreate(&cublas));
 }
 
 void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales)
@@ -21,8 +21,8 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
         int istride = 1, ostride = 1;
         int *inembed = n, onembed[] = {int(m_height), int(m_width) / 2 + 1};
 
-        CufftErrorCheck(cufftPlanMany(&plan_f, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_R2C, howmany));
-        CufftErrorCheck(cufftSetStream(plan_f, cudaStreamPerThread));
+        cudaErrorCheck(cufftPlanMany(&plan_f, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_R2C, howmany));
+        cudaErrorCheck(cufftSetStream(plan_f, cudaStreamPerThread));
     }
 
     // FFT forward window
@@ -34,8 +34,8 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
         int istride = 1, ostride = 1;
         int *inembed = n, onembed[] = {int(m_height), int(m_width) / 2 + 1};
 
-        CufftErrorCheck(cufftPlanMany(&plan_fw, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_R2C, howmany));
-        CufftErrorCheck(cufftSetStream(plan_fw, cudaStreamPerThread));
+        cudaErrorCheck(cufftPlanMany(&plan_fw, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_R2C, howmany));
+        cudaErrorCheck(cufftSetStream(plan_fw, cudaStreamPerThread));
     }
     // FFT inverse all channels
     {
@@ -46,8 +46,8 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
         int istride = 1, ostride = m_num_of_feats * IF_BIG_BATCH(m_num_of_scales, 1);
         int inembed[] = {int(m_height), int(m_width / 2 + 1)}, *onembed = n;
 
-        CufftErrorCheck(cufftPlanMany(&plan_i_features, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_C2R, howmany));
-        CufftErrorCheck(cufftSetStream(plan_i_features, cudaStreamPerThread));
+        cudaErrorCheck(cufftPlanMany(&plan_i_features, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_C2R, howmany));
+        cudaErrorCheck(cufftSetStream(plan_i_features, cudaStreamPerThread));
     }
     // FFT inverse one channel
     {
@@ -58,8 +58,8 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
         int istride = 1, ostride = IF_BIG_BATCH(m_num_of_scales, 1);
         int inembed[] = {int(m_height), int(m_width / 2 + 1)}, *onembed = n;
 
-        CufftErrorCheck(cufftPlanMany(&plan_i_1ch, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_C2R, howmany));
-        CufftErrorCheck(cufftSetStream(plan_i_1ch, cudaStreamPerThread));
+        cudaErrorCheck(cufftPlanMany(&plan_i_1ch, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_C2R, howmany));
+        cudaErrorCheck(cufftSetStream(plan_i_1ch, cudaStreamPerThread));
     }
 }
 
@@ -74,7 +74,7 @@ void cuFFT::forward(const MatDynMem &real_input, ComplexMat &complex_result)
     Fft::forward(real_input, complex_result);
     auto in = static_cast<cufftReal *>(const_cast<MatDynMem&>(real_input).deviceMem());
 
-    CufftErrorCheck(cufftExecR2C(plan_f, in, complex_result.get_p_data()));
+    cudaErrorCheck(cufftExecR2C(plan_f, in, complex_result.get_p_data()));
 }
 
 void cuFFT::forward_window(MatDynMem &feat, ComplexMat &complex_result, MatDynMem &temp)
@@ -89,7 +89,7 @@ void cuFFT::forward_window(MatDynMem &feat, ComplexMat &complex_result, MatDynMe
         cv::Mat temp_plane = temp.plane(i);
         temp_plane = feat_plane.mul(m_window);
     }
-    CufftErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_p_data()));
+    cudaErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_p_data()));
 }
 
 void cuFFT::inverse(ComplexMat &complex_input, MatDynMem &real_result)
@@ -102,20 +102,20 @@ void cuFFT::inverse(ComplexMat &complex_input, MatDynMem &real_result)
     float alpha = 1.0 / (m_width * m_height);
 
     if (n_channels == 1) {
-        CufftErrorCheck(cufftExecC2R(plan_i_1ch, in, out));
+        cudaErrorCheck(cufftExecC2R(plan_i_1ch, in, out));
     } else {
-        CufftErrorCheck(cufftExecC2R(plan_i_features, in, out));
+        cudaErrorCheck(cufftExecC2R(plan_i_features, in, out));
     }
     // TODO: Investigate whether this scalling is needed or not
-    CublasErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
+    cudaErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
 }
 
 cuFFT::~cuFFT()
 {
-    CublasErrorCheck(cublasDestroy(cublas));
+    cudaErrorCheck(cublasDestroy(cublas));
 
-    CufftErrorCheck(cufftDestroy(plan_f));
-    CufftErrorCheck(cufftDestroy(plan_fw));
-    CufftErrorCheck(cufftDestroy(plan_i_1ch));
-    CufftErrorCheck(cufftDestroy(plan_i_features));
+    cudaErrorCheck(cufftDestroy(plan_f));
+    cudaErrorCheck(cufftDestroy(plan_fw));
+    cudaErrorCheck(cufftDestroy(plan_i_1ch));
+    cudaErrorCheck(cufftDestroy(plan_i_features));
 }

@@ -104,9 +104,10 @@ static inline const char *_cudaGetErrorEnum(cufftResult error)
     return "<unknown>";
 }
 
-#define CufftErrorCheck(call) __cufftErrorCheck(call, __FILE__, __LINE__ )
+// This uses C++ overload resolution to print correct error message based on call type
+#define cudaErrorCheck(call) __cudaErrorCheck(call, __FILE__, __LINE__ )
 
-static inline void __cufftErrorCheck(cufftResult_t call, const char *file, const int line )
+static inline void __cudaErrorCheck(cufftResult_t call, const char *file, const int line )
 {
     if (call != CUFFT_SUCCESS) {
         fprintf(stderr, "cuFFT error %d:%s at %s:%d\n", call, _cudaGetErrorEnum(call), file, line);
@@ -115,13 +116,27 @@ static inline void __cufftErrorCheck(cufftResult_t call, const char *file, const
 
     return;
 }
-
-#define CublasErrorCheck(call) __cublasErrorCheck(call, __FILE__, __LINE__ )
-
-static inline void __cublasErrorCheck(cublasStatus_t call, const char *file, const int line )
+static inline void __cudaErrorCheck(cublasStatus_t call, const char *file, const int line )
 {
     if (call != CUBLAS_STATUS_SUCCESS) {
-        fprintf(stderr, "cuBLAS error %d at %s:%d\n", call, /* _cudaGetErrorEnum(call),*/ file, line);
+        const char *status_str;
+        switch (call) {
+#define CUBLAS_STATUS_STR(SYM) case CUBLAS_STATUS_ ## SYM: status_str = #SYM; break
+            CUBLAS_STATUS_STR(SUCCESS);
+            CUBLAS_STATUS_STR(NOT_INITIALIZED);
+            CUBLAS_STATUS_STR(ALLOC_FAILED);
+            CUBLAS_STATUS_STR(INVALID_VALUE);
+            CUBLAS_STATUS_STR(ARCH_MISMATCH);
+            CUBLAS_STATUS_STR(MAPPING_ERROR);
+            CUBLAS_STATUS_STR(EXECUTION_FAILED);
+            CUBLAS_STATUS_STR(INTERNAL_ERROR);
+            CUBLAS_STATUS_STR(NOT_SUPPORTED);
+            CUBLAS_STATUS_STR(LICENSE_ERROR);
+        default:
+            status_str = "???";
+#undef CUBLAS_STATUS_STR
+        }
+        fprintf(stderr, "cuBLAS error %d (%s) at %s:%d\n", call, status_str, file, line);
         exit(-1);
     }
 
