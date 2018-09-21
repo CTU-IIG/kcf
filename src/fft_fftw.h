@@ -26,9 +26,8 @@ public:
     ~Fftw() override;
 private:
     cv::Mat m_window;
-    // TODO: Remove *_all_scales plans
-    fftwf_plan plan_f, plan_f_all_scales, plan_fw, plan_fw_all_scales, plan_i_features,
-    plan_i_features_all_scales, plan_i_1ch;
+    fftwf_plan plan_f, plan_f_all_scales, plan_fw, plan_fw_all_scales, plan_i_features, plan_i_features_all_scales,
+        plan_i_1ch;
 };
 
 #endif // FFT_FFTW_H

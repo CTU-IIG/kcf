@@ -37,7 +37,7 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
     }
 #ifdef BIG_BATCH
     // FFT forward all scales
-    if (m_num_of_scales > 1 && BIG_BATCH_MODE) {
+    if (m_num_of_scales > 1) {
         cv::Mat in_f_all = cv::Mat::zeros(m_height * m_num_of_scales, m_width, CV_32F);
         ComplexMat out_f_all(m_height, m_width / 2 + 1, m_num_of_scales);
         float *in = reinterpret_cast<float *>(in_f_all.data);
@@ -73,7 +73,7 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
     }
 #ifdef BIG_BATCH
     // FFT forward window all scales all feats
-    if (m_num_of_scales > 1 && BIG_BATCH_MODE) {
+    if (m_num_of_scales > 1) {
         cv::Mat in_all = cv::Mat::zeros(m_height * (m_num_of_scales * m_num_of_feats), m_width, CV_32F);
         ComplexMat out_all(m_height, m_width / 2 + 1, m_num_of_scales * m_num_of_feats);
         float *in = reinterpret_cast<float *>(in_all.data);
@@ -109,7 +109,7 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
     }
     // FFT inverse all scales
 #ifdef BIG_BATCH
-    if (m_num_of_scales > 1 && BIG_BATCH_MODE) {
+    if (m_num_of_scales > 1) {
         ComplexMat in_i_all(m_height, m_width, m_num_of_feats * m_num_of_scales);
         cv::Mat out_i_all = cv::Mat::zeros(m_height, m_width, CV_32FC(m_num_of_feats * m_num_of_scales));
         fftwf_complex *in = reinterpret_cast<fftwf_complex *>(in_i_all.get_p_data());
@@ -126,7 +126,7 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
                                                              onembed, ostride, odist, FFTW_PATIENT);
     }
 #endif
-    // FFT inver one channel
+    // FFT inverse one channel
     {
         ComplexMat in_i1(int(m_height), int(m_width), IF_BIG_BATCH(m_num_of_scales, 1));
         cv::Mat out_i1 = cv::Mat::zeros(int(m_height), int(m_width), CV_32FC(IF_BIG_BATCH(m_num_of_scales, 1)));
