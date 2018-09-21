@@ -37,7 +37,7 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
     }
 #ifdef BIG_BATCH
     // FFT forward all scales
-    if (m_num_of_scales > 1 && BIG_BATCH_MODE) {
+    if (m_num_of_scales > 1) {
         cv::Mat in_f_all = cv::Mat::zeros(m_height * m_num_of_scales, m_width, CV_32F);
         ComplexMat out_f_all(m_height, m_width / 2 + 1, m_num_of_scales);
         float *in = reinterpret_cast<float *>(in_f_all.data);
@@ -73,7 +73,7 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
     }
 #ifdef BIG_BATCH
     // FFT forward window all scales all feats
-    if (m_num_of_scales > 1 && BIG_BATCH_MODE) {
+    if (m_num_of_scales > 1) {
         cv::Mat in_all = cv::Mat::zeros(m_height * (m_num_of_scales * m_num_of_feats), m_width, CV_32F);
         ComplexMat out_all(m_height, m_width / 2 + 1, m_num_of_scales * m_num_of_feats);
         float *in = reinterpret_cast<float *>(in_all.data);
@@ -109,7 +109,7 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
     }
     // FFT inverse all scales
 #ifdef BIG_BATCH
-    if (m_num_of_scales > 1 && BIG_BATCH_MODE) {
+    if (m_num_of_scales > 1) {
         ComplexMat in_i_all(m_height, m_width, m_num_of_feats * m_num_of_scales);
         cv::Mat out_i_all = cv::Mat::zeros(m_height, m_width, CV_32FC(m_num_of_feats * m_num_of_scales));
         fftwf_complex *in = reinterpret_cast<fftwf_complex *>(in_i_all.get_p_data());
@@ -126,7 +126,7 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
                                                              onembed, ostride, odist, FFTW_PATIENT);
     }
 #endif
-    // FFT inver one channel one scale
+    // FFT inverse one channel
     {
         ComplexMat in_i1(int(m_height), int(m_width), 1);
         cv::Mat out_i1 = cv::Mat::zeros(int(m_height), int(m_width), CV_32FC1);
@@ -134,34 +134,15 @@ void Fftw::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned
         float *out = reinterpret_cast<float *>(out_i1.data);
         int rank = 2;
         int n[] = {int(m_height), int(m_width)};
-        int howmany = 1;
-        int idist = int(m_height * (m_width / 2 + 1)), odist = 1;
-        int istride = 1, ostride = 1;
-        int inembed[] = {int(m_height), int(m_width) / 2 + 1}, *onembed = n;
+        int howmany = IF_BIG_BATCH(m_num_of_scales, 1);
+        int idist = m_height * (m_width / 2 + 1), odist = 1;
+        int istride = 1, ostride = IF_BIG_BATCH(m_num_of_scales, 1);
+        int inembed[] = {int(m_height), int(m_width / 2 + 1)}, *onembed = n;
 
         FFTW_PLAN_WITH_THREADS();
         plan_i_1ch = fftwf_plan_many_dft_c2r(rank, n, howmany, in, inembed, istride, idist, out, onembed, ostride,
                                              odist, FFTW_PATIENT);
     }
-#ifdef BIG_BATCH
-    // FFT inver one channel all scales
-    if (m_num_of_scales > 1 && BIG_BATCH_MODE) {
-        ComplexMat in_i1_all(m_height, m_width, m_num_of_scales);
-        cv::Mat out_i1_all = cv::Mat::zeros(m_height, m_width, CV_32FC(m_num_of_scales));
-        fftwf_complex *in = reinterpret_cast<fftwf_complex *>(in_i1_all.get_p_data());
-        float *out = reinterpret_cast<float *>(out_i1_all.data);
-        int rank = 2;
-        int n[] = {(int)m_height, (int)m_width};
-        int howmany = m_num_of_scales;
-        int idist = m_height * (m_width / 2 + 1), odist = 1;
-        int istride = 1, ostride = m_num_of_scales;
-        int inembed[] = {(int)m_height, (int)m_width / 2 + 1}, *onembed = n;
-
-        FFTW_PLAN_WITH_THREADS();
-        plan_i_1ch_all_scales = fftwf_plan_many_dft_c2r(rank, n, howmany, in, inembed, istride, idist, out, onembed,
-                                                        ostride, odist, FFTW_PATIENT);
-    }
-#endif
 }
 
 void Fftw::set_window(const MatDynMem &window)
@@ -215,10 +196,8 @@ void Fftw::inverse(ComplexMat &  complex_input, MatDynMem & real_result)
     fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_input.get_p_data());
     float *out = real_result.ptr<float>();
 
-    if (n_channels == 1)
+    if (n_channels == 1|| (BIG_BATCH_MODE && n_channels == int(IF_BIG_BATCH(m_num_of_scales, 1))))
         fftwf_execute_dft_c2r(plan_i_1ch, in, out);
-    else if (BIG_BATCH_MODE && n_channels == int(IF_BIG_BATCH(m_num_of_scales, 1)))
-        fftwf_execute_dft_c2r(plan_i_1ch_all_scales, in, out);
     else if (BIG_BATCH_MODE && n_channels == int(m_num_of_feats) * int(IF_BIG_BATCH(m_num_of_scales, 1)))
         fftwf_execute_dft_c2r(plan_i_features_all_scales, in, out);
     else

@@ -16,7 +16,7 @@
 
 class Fftw : public Fft
 {
-public:
+  public:
     Fftw();
     void init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales) override;
     void set_window(const MatDynMem &window) override;
@@ -24,11 +24,11 @@ public:
     void forward_window(MatScaleFeats &patch_feats_in, ComplexMat &complex_result, MatScaleFeats &tmp) override;
     void inverse(ComplexMat &complex_input, MatDynMem &real_result) override;
     ~Fftw() override;
-private:
+
+  private:
     cv::Mat m_window;
-    // TODO: Remove *_all_scales plans
-    fftwf_plan plan_f, plan_f_all_scales, plan_fw, plan_fw_all_scales, plan_i_features,
-	plan_i_features_all_scales, plan_i_1ch, plan_i_1ch_all_scales;
+    fftwf_plan plan_f, plan_f_all_scales, plan_fw, plan_fw_all_scales, plan_i_features, plan_i_features_all_scales,
+        plan_i_1ch;
 };
 
 #endif // FFT_FFTW_H
