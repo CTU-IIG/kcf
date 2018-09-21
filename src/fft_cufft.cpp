@@ -140,7 +140,7 @@ void cuFFT::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatS
         }
     }
 
-    if (n_channels <= int(m_num_of_feats))
+    if (n_channels <= m_num_of_feats)
         cudaErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_p_data()));
     else
         cudaErrorCheck(cufftExecR2C(plan_fw_all_scales, temp_data, complex_result.get_p_data()));
@@ -155,9 +155,9 @@ void cuFFT::inverse(ComplexMat &complex_input, MatDynMem &real_result)
     cufftReal *out = real_result.deviceMem();
     float alpha = 1.0 / (m_width * m_height);
 
-    if (n_channels == 1 || (BIG_BATCH_MODE && n_channels == int(IF_BIG_BATCH(m_num_of_scales, 1))))
+    if (n_channels == 1 || (BIG_BATCH_MODE && n_channels == IF_BIG_BATCH(m_num_of_scales, 1)))
         cudaErrorCheck(cufftExecC2R(plan_i_1ch, in, out));
-    else if (BIG_BATCH_MODE && n_channels == int(m_num_of_feats) * int(IF_BIG_BATCH(m_num_of_scales, 1)))
+    else if (BIG_BATCH_MODE && n_channels == m_num_of_feats * IF_BIG_BATCH(m_num_of_scales, 1))
         cudaErrorCheck(cufftExecC2R(plan_i_features_all_scales, in, out));
     else
         cudaErrorCheck(cufftExecC2R(plan_i_features, in, out));

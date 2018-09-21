@@ -217,6 +217,5 @@ Fftw::~Fftw()
         fftwf_destroy_plan(plan_f_all_scales);
         fftwf_destroy_plan(plan_i_features_all_scales);
         fftwf_destroy_plan(plan_fw_all_scales);
-        fftwf_destroy_plan(plan_i_1ch_all_scales);
     }
 }
