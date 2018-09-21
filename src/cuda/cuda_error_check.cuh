@@ -116,7 +116,6 @@ static inline void __cudaErrorCheck(cufftResult_t call, const char *file, const 
 
     return;
 }
-
 static inline void __cudaErrorCheck(cublasStatus_t call, const char *file, const int line )
 {
     if (call != CUBLAS_STATUS_SUCCESS) {

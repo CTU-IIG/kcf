@@ -46,7 +46,6 @@ private:
 
     ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_features, num_of_scales};
     ComplexMat kzf{uint(freq_size.height), uint(freq_size.width), num_of_scales};
-
 public:
 #ifdef ASYNC
     std::future<void> async_res;
