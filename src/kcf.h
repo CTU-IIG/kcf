@@ -59,7 +59,8 @@ class KCF_Tracker
 {
     friend ThreadCtx;
 public:
-    bool m_debug     {false};
+    bool m_debug {false};
+    bool m_visual_debug {false};
     const bool m_use_scale {true};
     const bool m_use_color {true};
     const bool m_use_subpixel_localization {true};
