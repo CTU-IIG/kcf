@@ -191,8 +191,6 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
         std::cerr << "cuFFT supports only Gaussian kernel." << std::endl;
         std::exit(EXIT_FAILURE);
     }
-#else
-    p_xf.create(feature_size.height, feature_size.height / 2 + 1, p_num_of_feats);
 #endif
 
 #if defined(CUFFT) || defined(FFTW)
