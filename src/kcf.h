@@ -36,18 +36,6 @@ struct BBox_c
         h  *= factor;
     }
 
-    inline void scale_x(double factor)
-    {
-        cx *= factor;
-        w  *= factor;
-    }
-
-    inline void scale_y(double factor)
-    {
-        cy *= factor;
-        h  *= factor;
-    }
-
     inline cv::Rect get_rect()
     {
         return cv::Rect(int(cx-w/2.), int(cy-h/2.), int(w), int(h));
@@ -104,11 +92,8 @@ private:
     double max_response = -1.;
 
     bool p_resize_image = false;
-    bool p_fit_to_pw2 = false;
 
     const double p_downscale_factor = 0.5;
-    double p_fit_factor_x = 1;
-    double p_fit_factor_y = 1;
     const double p_floating_error = 0.0001;
 
     const double p_padding = 1.5;
@@ -117,7 +102,8 @@ private:
     const double p_kernel_sigma = 0.5;    //def = 0.5
     const double p_lambda = 1e-4;         //regularization in learning step
     const double p_interp_factor = 0.02;  //def = 0.02, linear interpolation factor for adaptation
-    cv::Size p_windows_size;
+    cv::Size p_windows_size;              // size of the patch to find the tracked object in
+    cv::Size fit_size;                    // size to which rescale the patch for better FFT performance
 
     const uint p_num_scales = m_use_scale ? 7 : 1;
     const double p_scale_step = 1.02;

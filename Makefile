@@ -2,7 +2,7 @@
 
 BUILDS = opencvfft-st opencvfft-async opencvfft-openmp fftw fftw-async fftw-openmp fftw-big fftw-big-openmp cufftw cufftw-big cufftw-big-openmp cufft cufft-openmp cufft-big cufft-big-openmp
 TESTSEQ = bmx ball1 crossing racing book
-TESTFLAGS = default fit128
+TESTFLAGS = default fit
 
 all: $(BUILDS)
 
@@ -150,5 +150,5 @@ define ninja-testcase
 build build-$(1)/kcf_vot-$(2)-$(3).log: TEST_SEQ build-$(1)/kcf_vot $(filter-out %/output.txt,$(wildcard vot2016/$(2)/*)) vot2016/$(2)
   build = $(1)
   seq = vot2016/$(2)
-  flags = $(if $(3:fit128=),,--fit=128)
+  flags = $(if $(3:fit128=),,--fit=128)$(if $(3:fit=),,--fit)
 endef

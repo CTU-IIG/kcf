@@ -165,7 +165,7 @@ top_left_y, width, height".
 | --visualize, -v[delay_ms] | Visualize the output, optionally with specified delay. If the delay is 0 the program will wait for a key press. |
 | --output, -o <output.txt>	 | Specify name of output file. |
 | --debug, -d				 | Generate debug output. |
-| --fit, -f[W[xH]] | Specifies the dimension to which the extracted patch should be scaled. It should be divisible by 4. No dimension is the same as `128x128`, a single dimension `W` will result in patch size of `W`×`W`. |
+| --fit, -f[W[xH]] | Specifies the dimension to which the extracted patch should be scaled. It should be divisible by 4. No dimension or zero rounds the dimensions to the nearest smaller power of 2, a single dimension `W` will result in patch size of `W`×`W`. |
 
 
 ## Authors

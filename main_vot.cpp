@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
                       << " --visualize | -v[delay_ms]\n"
                       << " --output    | -o <output.txt>\n"
                       << " --debug     | -d\n"
-                      << " --fit       | -f[WxH]\n";
+                      << " --fit       | -f[W[xH]]\n";
             exit(0);
             break;
         case 'o':
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
             break;
         case 'f':
             if (!optarg) {
-                fit_size_x = fit_size_y = 128;
+                fit_size_x = fit_size_y = 0;
             } else {
                 char tail;
                 if (sscanf(optarg, "%d%c", &fit_size_x, &tail) == 1) {
@@ -87,12 +87,6 @@ int main(int argc, char *argv[])
                     fprintf(stderr, "Cannot parse -f argument: %s\n", optarg);
                     return 1;
                 }
-            }
-            int min_size = 2 * tracker.p_cell_size;
-            if (fit_size_x <  min_size || fit_size_x < min_size) {
-                fprintf(stderr, "Fit size %dx%d too small. Minimum is %dx%d.\n",
-                        fit_size_x, fit_size_y, min_size, min_size);
-                return 1;
             }
             break;
         }

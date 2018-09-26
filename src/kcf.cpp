@@ -92,6 +92,15 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
     //        p_model_alphaf = p_yf / (kf + p_lambda);   //equation for fast training
 }
 
+static int round_pw2_down(int x)
+{
+        for (int i = 1; i < 32; i <<= 1)
+            x |= x >> i;
+        x++;
+        return x >> 1;
+}
+
+
 void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int fit_size_y)
 {
     __dbgTracer.debug = m_debug;
@@ -140,53 +149,41 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
         img.convertTo(input_gray, CV_32FC1);
 
     // don't need too large image
-    if (p_init_pose.w * p_init_pose.h > 100. * 100. && (fit_size_x == -1 || fit_size_y == -1)) {
+    if (p_init_pose.w * p_init_pose.h > 100. * 100.) {
         std::cout << "resizing image by factor of " << 1 / p_downscale_factor << std::endl;
         p_resize_image = true;
         p_init_pose.scale(p_downscale_factor);
         cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
         cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-    } else if (!(fit_size_x == -1 && fit_size_y == -1)) {
-        if (fit_size_x % p_cell_size != 0 || fit_size_y % p_cell_size != 0) {
-            std::cerr << "Error: Fit size is not multiple of HOG cell size (" << p_cell_size << ")" << std::endl;
-            std::exit(EXIT_FAILURE);
-        }
-        p_fit_factor_x = (double)fit_size_x / round(p_init_pose.w * (1. + p_padding));
-        p_fit_factor_y = (double)fit_size_y / round(p_init_pose.h * (1. + p_padding));
-        std::cout << "resizing image horizontaly by factor of " << p_fit_factor_x << " and verticaly by factor of "
-                  << p_fit_factor_y << std::endl;
-        p_fit_to_pw2 = true;
-        p_init_pose.scale_x(p_fit_factor_x);
-        p_init_pose.scale_y(p_fit_factor_y);
-        if (fabs(p_fit_factor_x - 1) > p_floating_error || fabs(p_fit_factor_y - 1) > p_floating_error) {
-            if (p_fit_factor_x < 1 && p_fit_factor_y < 1) {
-                cv::resize(input_gray, input_gray, cv::Size(0, 0), p_fit_factor_x, p_fit_factor_y, cv::INTER_AREA);
-                cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_fit_factor_x, p_fit_factor_y, cv::INTER_AREA);
-            } else {
-                cv::resize(input_gray, input_gray, cv::Size(0, 0), p_fit_factor_x, p_fit_factor_y, cv::INTER_LINEAR);
-                cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_fit_factor_x, p_fit_factor_y, cv::INTER_LINEAR);
-            }
-        }
     }
-
 
     // compute win size + fit to fhog cell size
     p_windows_size.width = round(p_init_pose.w * (1. + p_padding) / p_cell_size) * p_cell_size;
     p_windows_size.height = round(p_init_pose.h * (1. + p_padding) / p_cell_size) * p_cell_size;
-    feature_size.width = p_windows_size.width / p_cell_size;
-    feature_size.height = p_windows_size.height / p_cell_size;
+
+    if (fit_size_x == 0 || fit_size_y == 0) {
+        // Round down to the next highest power of 2
+        fit_size = cv::Size(round_pw2_down(p_windows_size.width),
+                            round_pw2_down(p_windows_size.height));
+    } else if (fit_size_x == -1 || fit_size_y == -1) {
+        fit_size =  p_windows_size;
+    } else {
+        fit_size = cv::Size(fit_size_x, fit_size_y);
+    }
+
+    feature_size = fit_size / p_cell_size;
 
     p_scales.clear();
     for (int i = -int(p_num_scales) / 2; i <= int(p_num_scales) / 2; ++i)
         p_scales.push_back(std::pow(p_scale_step, i));
 
 #ifdef CUFFT
-    if (feature_size.height * (feature_size.width / 2 + 1) > 1024) {
+    if (Fft::freq_size(feature_size).area() > 1024) {
         std::cerr << "Window after forward FFT is too big for CUDA kernels. Plese use -f to set "
                      "the window dimensions so its size is less or equal to "
                   << 1024 * p_cell_size * p_cell_size * 2 + 1
-                  << " pixels . Currently the size of the window is: " << p_windows_size.width << "x" << p_windows_size.height
-                  << " which is  " << p_windows_size.width * p_windows_size.height << " pixels. " << std::endl;
+                  << " pixels. Currently the size of the window is: " << fit_size
+                  << " which is  " << fit_size.area() << " pixels. " << std::endl;
         std::exit(EXIT_FAILURE);
     }
 
@@ -226,12 +223,16 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     p_min_max_scale[0] = std::pow(p_scale_step, std::ceil(std::log(min_size_ratio) / log(p_scale_step)));
     p_min_max_scale[1] = std::pow(p_scale_step, std::floor(std::log(max_size_ratio) / log(p_scale_step)));
 
-    std::cout << "init: img size " << img.cols << "x" << img.rows << std::endl;
-    std::cout << "init: win size " << p_windows_size.width << "x" << p_windows_size.height << std::endl;
-    std::cout << "init: FFT size " << feature_size.width << "x" << feature_size.height << std::endl;
+    std::cout << "init: img size " << img.size() << std::endl;
+    std::cout << "init: win size " << p_windows_size;
+    if (p_windows_size != fit_size)
+        std::cout << " resized to " << fit_size;
+    std::cout << std::endl;
+    std::cout << "init: FFT size " << feature_size << std::endl;
     std::cout << "init: min max scales factors: " << p_min_max_scale[0] << " " << p_min_max_scale[1] << std::endl;
 
-    p_output_sigma = std::sqrt(p_init_pose.w * p_init_pose.h) * p_output_sigma_factor / p_cell_size;
+    p_output_sigma = std::sqrt(p_init_pose.w * p_init_pose.h * double(fit_size.area()) / p_windows_size.area())
+           * p_output_sigma_factor / p_cell_size;
 
     fft.init(feature_size.width, feature_size.height, p_num_of_feats, p_num_scales);
     fft.set_window(MatDynMem(cosine_window_function(feature_size.width, feature_size.height)));
@@ -256,9 +257,6 @@ void KCF_Tracker::updateTrackerPosition(BBox_c &bbox)
     BBox_c tmp = bbox;
     if (p_resize_image) {
         tmp.scale(p_downscale_factor);
-    } else if (p_fit_to_pw2) {
-        tmp.scale_x(p_fit_factor_x);
-        tmp.scale_y(p_fit_factor_y);
     }
     p_current_center = tmp.center();
 }
@@ -273,10 +271,6 @@ BBox_c KCF_Tracker::getBBox()
 
     if (p_resize_image)
         tmp.scale(1 / p_downscale_factor);
-    if (p_fit_to_pw2) {
-        tmp.scale_x(1 / p_fit_factor_x);
-        tmp.scale_y(1 / p_fit_factor_y);
-    }
 
     return tmp;
 }
@@ -291,15 +285,6 @@ void KCF_Tracker::resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray)
     if (p_resize_image) {
         cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
         cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-    } else if (p_fit_to_pw2 && fabs(p_fit_factor_x - 1) > p_floating_error &&
-               fabs(p_fit_factor_y - 1) > p_floating_error) {
-        if (p_fit_factor_x < 1 && p_fit_factor_y < 1) {
-            cv::resize(input_gray, input_gray, cv::Size(0, 0), p_fit_factor_x, p_fit_factor_y, cv::INTER_AREA);
-            cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_fit_factor_x, p_fit_factor_y, cv::INTER_AREA);
-        } else {
-            cv::resize(input_gray, input_gray, cv::Size(0, 0), p_fit_factor_x, p_fit_factor_y, cv::INTER_LINEAR);
-            cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_fit_factor_x, p_fit_factor_y, cv::INTER_LINEAR);
-        }
     }
 }
 
@@ -376,15 +361,13 @@ void KCF_Tracker::track(cv::Mat &img)
     uint max_idx;
     max_response = findMaxReponse(max_idx, new_location);
 
+    new_location.x *= double(p_windows_size.width) / fit_size.width;
+    new_location.y *= double(p_windows_size.height) / fit_size.height;
+
     p_current_center += p_current_scale * p_cell_size * new_location;
 
-    if (p_fit_to_pw2) {
-        clamp2(p_current_center.x, 0.0, (img.cols * p_fit_factor_x) - 1);
-        clamp2(p_current_center.y, 0.0, (img.rows * p_fit_factor_y) - 1);
-    } else {
-        clamp2(p_current_center.x, 0.0, img.cols - 1.0);
-        clamp2(p_current_center.y, 0.0, img.rows - 1.0);
-    }
+    clamp2(p_current_center.x, 0.0, img.cols - 1.0);
+    clamp2(p_current_center.y, 0.0, img.rows - 1.0);
 
     // sub grid scale interpolation
     if (m_use_subgrid_scale) {
@@ -458,18 +441,18 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
 cv::Mat KCF_Tracker::get_features(cv::Mat &input_rgb, cv::Mat &input_gray, int cx, int cy,
                                   int size_x, int size_y, double scale) const
 {
-    int size_x_scaled = floor(size_x * scale);
-    int size_y_scaled = floor(size_y * scale);
+    cv::Size scaled = cv::Size(floor(size_x * scale), floor(size_y * scale));
 
-    cv::Mat patch_gray = get_subwindow(input_gray, cx, cy, size_x_scaled, size_y_scaled);
-    cv::Mat patch_rgb = get_subwindow(input_rgb, cx, cy, size_x_scaled, size_y_scaled);
+    cv::Mat patch_gray = get_subwindow(input_gray, cx, cy, scaled.width, scaled.height);
+    cv::Mat patch_rgb = get_subwindow(input_rgb, cx, cy, scaled.width, scaled.height);
 
     // resize to default size
-    if (scale > 1.) {
+    if (scaled.area() > fit_size.area()) {
         // if we downsample use  INTER_AREA interpolation
-        cv::resize(patch_gray, patch_gray, cv::Size(size_x, size_y), 0., 0., cv::INTER_AREA);
+        // note: this is just a guess - we may downsample in X and upsample in Y (or vice versa)
+        cv::resize(patch_gray, patch_gray, fit_size, 0., 0., cv::INTER_AREA);
     } else {
-        cv::resize(patch_gray, patch_gray, cv::Size(size_x, size_y), 0., 0., cv::INTER_LINEAR);
+        cv::resize(patch_gray, patch_gray, fit_size, 0., 0., cv::INTER_LINEAR);
     }
 
     // get hog(Histogram of Oriented Gradients) features
@@ -479,11 +462,11 @@ cv::Mat KCF_Tracker::get_features(cv::Mat &input_rgb, cv::Mat &input_gray, int c
     std::vector<cv::Mat> color_feat;
     if ((m_use_color || m_use_cnfeat) && input_rgb.channels() == 3) {
         // resize to default size
-        if (scale > 1.) {
+        if (scaled.area() > (fit_size / p_cell_size).area()) {
             // if we downsample use  INTER_AREA interpolation
-            cv::resize(patch_rgb, patch_rgb, cv::Size(size_x / p_cell_size, size_y / p_cell_size), 0., 0., cv::INTER_AREA);
+            cv::resize(patch_rgb, patch_rgb, fit_size / p_cell_size, 0., 0., cv::INTER_AREA);
         } else {
-            cv::resize(patch_rgb, patch_rgb, cv::Size(size_x / p_cell_size, size_y / p_cell_size), 0., 0., cv::INTER_LINEAR);
+            cv::resize(patch_rgb, patch_rgb, fit_size / p_cell_size, 0., 0., cv::INTER_LINEAR);
         }
     }
 
