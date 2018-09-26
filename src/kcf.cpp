@@ -111,7 +111,7 @@ static int round_pw2_down(int x)
 
 void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int fit_size_y)
 {
-    __dbgTracer.debug = m_debug;
+    __dbgTracer.debug = m_debug || m_visual_debug;
     TRACE("");
 
     // check boundary, enforce min size
@@ -312,6 +312,39 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
         }
     }
 #endif
+
+    if (m_visual_debug) {
+        cv::Mat all_responses(cv::Size(p_num_angles * 100, p_num_scales * 100),
+                              d.threadctxs[max_idx].response.plane(0).type(), cv::Scalar::all(0));
+        for (size_t i = 0; i < p_num_scales; ++i) {
+            for (size_t j = 0; j < p_num_angles; ++j) {
+                cv::Mat in_roi(all_responses, cv::Rect(j * 100, i * 100, 100, 100));
+                cv::Mat copy_response = d.threadctxs[p_num_angles * i + j].response.plane(0).clone();
+
+                copy_response = copy_response(cv::Rect(0, 0, copy_response.cols & -2, copy_response.rows & -2));
+
+                int cx = copy_response.cols / 2;
+                int cy = copy_response.rows / 2;
+                cv::Mat q0(copy_response, cv::Rect(0, 0, cx, cy));
+                cv::Mat q1(copy_response, cv::Rect(cx, 0, cx, cy));
+                cv::Mat q2(copy_response, cv::Rect(0, cy, cx, cy));
+                cv::Mat q3(copy_response, cv::Rect(cx, cy, cx, cy));
+                cv::Mat tmp;
+                q0.copyTo(tmp);
+                q3.copyTo(q0);
+                tmp.copyTo(q3);
+                q1.copyTo(tmp);
+                q2.copyTo(q1);
+                tmp.copyTo(q2);
+
+                copy_response.copyTo(in_roi);
+            }
+        }
+        cv::namedWindow("All responses", CV_WINDOW_AUTOSIZE);
+        cv::imshow("All responses", all_responses);
+        cv::waitKey();
+    }
+
     cv::Point2i &max_response_pt = IF_BIG_BATCH(d.threadctxs[0].max[max_idx].loc,        d.threadctxs[max_idx].max.loc);
     cv::Mat max_response_map     = IF_BIG_BATCH(d.threadctxs[0].response.plane(max_idx), d.threadctxs[max_idx].response.plane(0));
 
