@@ -71,10 +71,10 @@ class DbgTracer {
     };
 
     template <typename T>
-    void traceVal(const char *name, const T& obj, int line)
+    void traceVal(const char *name, const T& obj, int line, bool always = false)
     {
         (void)line;
-        if (debug)
+        if (debug || always)
             std::cerr << indent() << name /*<< " @" << line */ << " " << print(obj) << std::endl;
     }
 
@@ -127,5 +127,6 @@ extern DbgTracer __dbgTracer;
 
 #define DEBUG_PRINT(obj) __dbgTracer.traceVal(#obj, (obj), __LINE__)
 #define DEBUG_PRINTM(obj) DEBUG_PRINT(obj)
+#define PRINT(obj) __dbgTracer.traceVal(#obj, (obj), __LINE__, true)
 
 #endif // DEBUG_H
