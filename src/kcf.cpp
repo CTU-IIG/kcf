@@ -34,6 +34,14 @@ void clamp2(T& n, const T& lower, const T& upper)
     n = std::max(lower, std::min(n, upper));
 }
 
+#if CV_VERSION_EPOCH < 3
+template<typename _Tp> static inline
+cv::Size_<_Tp> operator / (const cv::Size_<_Tp>& a, _Tp b)
+{
+    return cv::Size_<_Tp>(a.width / b, a.height / b);
+}
+#endif
+
 class Kcf_Tracker_Private {
     friend KCF_Tracker;
     std::vector<ThreadCtx> threadctxs;
