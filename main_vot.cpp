@@ -180,7 +180,15 @@ int main(int argc, char *argv[])
         std::cout << std::endl;
 
         if (visualize_delay >= 0) {
-            cv::rectangle(image, bb_rect, CV_RGB(0,255,0), 2);
+            cv::Point pt(bb.cx, bb.cy);
+            cv::Size size(bb.w, bb.h);
+            cv::RotatedRect rotatedRectangle(pt, size, bb.a);
+
+            cv::Point2f vertices[4];
+            rotatedRectangle.points(vertices);
+
+            for (int i = 0; i < 4; i++)
+                cv::line(image, vertices[i], vertices[(i + 1) % 4], cv::Scalar(0, 255, 0), 2);
             cv::imshow("output", image);
             int ret = cv::waitKey(visualize_delay);
             if (visualize_delay > 0 && ret != -1 && ret < 128)

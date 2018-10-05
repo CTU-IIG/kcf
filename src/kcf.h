@@ -22,7 +22,7 @@ struct ThreadCtx;
 
 struct BBox_c
 {
-    double cx, cy, w, h;
+    double cx, cy, w, h, a;
 
     inline cv::Point2d center() const { return cv::Point2d(cx, cy); }
 
