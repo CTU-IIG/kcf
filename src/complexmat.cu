@@ -24,7 +24,7 @@ __global__ void sqr_norm_kernel(const float *in, float *block_res, int total)
 
 void ComplexMat_::sqr_norm(DynMem &result) const
 {
-    assert(n_scales == 1);
+    assert(n_scales > 0);
 
     const uint total = n_channels * rows * cols;
     const dim3 threads(1024);
@@ -141,7 +141,7 @@ __global__ void same_num_channels_mul_kernel(const float *data_l, const float *d
 // element-wise per channel multiplication, division and addition
 ComplexMat_ ComplexMat_::operator*(const ComplexMat_ &rhs) const
 {
-    assert(rhs.n_channels == n_channels && rhs.cols == cols && rhs.rows == rows);
+    assert(rhs.n_channels == n_channels/n_scales && rhs.cols == cols && rhs.rows == rows);
 
     ComplexMat_ result = ComplexMat_::same_size(*this);
 
