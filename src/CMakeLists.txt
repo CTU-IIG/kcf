@@ -12,6 +12,7 @@ option(OPENMP "Use OpenMP to paralelize certain portions of code." OFF)
 option(ASYNC "Use C++ std::async to paralelize certain portions of code." OFF)
 option(CUDA_DEBUG "Enables error cheking for cuda and cufft. " OFF)
 option(BIG_BATCH "Execute all FFT calculation in a single batch. This can improve paralelism and reduce GPU offloading overhead." OFF)
+option(USE_CUDA_MEMCPY "Use the normal CUDA memory model with CUDA memcopy operations to move to and from the device." OFF)
 
 IF(PROFILING)
   add_definitions(-DPROFILING )
@@ -21,6 +22,15 @@ ENDIF()
 IF(BIG_BATCH)
   add_definitions(-DBIG_BATCH )
   MESSAGE(STATUS "Big_batch mode")
+ENDIF()
+
+IF( NOT (FFT STREQUAL "cuFFT") AND USE_CUDA_MEMCPY)
+  message(SEND_ERROR "CUDA traditional memory opperations are only supported in combination with cuFFT")
+ENDIF()
+
+IF(USE_CUDA_MEMCPY)
+  add_definitions(-DUSE_CUDA_MEMCPY )
+  MESSAGE(STATUS "CUDA using memcpy operations")
 ENDIF()
 
 IF (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") AND NOT OPENMP)

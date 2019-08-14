@@ -95,9 +95,9 @@ class DbgTracer {
     };
 
     template <typename T> Printer<T> print(const T& obj) { return Printer<T>(obj); }
-    Printer<cv::Mat> print(const MatScales& obj) { return Printer<cv::Mat>(obj); }
-    Printer<cv::Mat> print(const MatFeats& obj) { return Printer<cv::Mat>(obj); }
-    Printer<cv::Mat> print(const MatScaleFeats& obj) { return Printer<cv::Mat>(obj); }
+    Printer<MatDynMem> print(const MatScales& obj) { return Printer<MatDynMem>(obj); }
+    Printer<MatDynMem> print(const MatFeats& obj) { return Printer<MatDynMem>(obj); }
+    Printer<MatDynMem> print(const MatScaleFeats& obj) { return Printer<MatDynMem>(obj); }
 };
 
 template <typename T>
@@ -131,6 +131,7 @@ static inline std::ostream &operator<<(std::ostream &os, const cufftComplex &p)
 #endif
 
 std::ostream &operator<<(std::ostream &os, const DbgTracer::Printer<ComplexMat> &p);
+std::ostream &operator<<(std::ostream &os, const DbgTracer::Printer<MatDynMem> &p);
 
 extern DbgTracer __dbgTracer;
 

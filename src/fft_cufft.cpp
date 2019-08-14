@@ -76,7 +76,6 @@ void cuFFT::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatS
 {
     Fft::forward_window(feat, complex_result, temp);
 
-    cufftReal *temp_data = temp.deviceMem();
     uint n_scales = feat.size[0];
 
     for (uint s = 0; s < n_scales; ++s) {
@@ -87,6 +86,7 @@ void cuFFT::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatS
         }
     }
 
+    cufftReal *temp_data = temp.deviceMem();
     if (n_scales == 1)
         cudaErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_dev_data()));
 #ifdef BIG_BATCH
