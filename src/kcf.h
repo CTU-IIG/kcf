@@ -11,18 +11,8 @@
 #include "cuda_error_check.hpp"
 #include <cuda_runtime.h>
 #endif
-
+#include "fft.h"
 #include "cnfeat.hpp"
-#ifdef FFTW
-#include "fft_fftw.h"
-#define FFT Fftw
-#elif defined(CUFFT)
-#include "fft_cufft.h"
-#define FFT cuFFT
-#else
-#include "fft_opencv.h"
-#define FFT FftOpencv
-#endif
 #include "pragmas.h"
 
 class Kcf_Tracker_Private;
@@ -88,7 +78,6 @@ public:
     double getFilterResponse() const; // Measure of tracking accuracy
 
 private:
-    FFT &fft;
 
     // Initial pose of tracked object in internal image coordinates
     // (scaled by p_downscale_factor if p_resize_image)
@@ -163,7 +152,7 @@ private:
             , ifft_res(num_scales, size)
             , k(num_scales, size)
         {}
-        void operator()(ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
+        void operator()(ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation, const ThreadCtx &ctx);
 
       private:
         DynMem xf_sqr_norm;

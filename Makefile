@@ -1,6 +1,6 @@
 # Makefile to build all the available variants
 
-BUILDS = opencvfft-st opencvfft-async opencvfft-openmp fftw fftw-async fftw-openmp fftw-big fftw-big-openmp cufftw cufftw-big cufftw-big-openmp cufft cufft-openmp cufft-big cufft-big-openmp
+BUILDS = opencvfft-st opencvfft-async opencvfft-openmp fftw fftw-async fftw-openmp fftw-big fftw-big-openmp cufftw cufftw-openmp cufftw-big cufftw-big-openmp cufft cufft-openmp cufft-big cufft-big-openmp cufft-trad cufft-openmp-trad cufft-big-trad cufft-big-openmp-trad
 TESTSEQ = bmx ball1 crossing racing book
 TESTFLAGS = default fit
 
@@ -27,21 +27,26 @@ clean: build.ninja
 # export CUDA_BIN_PATH=/usr/local/cuda-9.0
 # export CUDA_ARCH_LIST=6.2
 
-CMAKE_OTPS_opencvfft-st      = -DFFT=OpenCV
-CMAKE_OTPS_opencvfft-async   = -DFFT=OpenCV -DASYNC=ON
-CMAKE_OTPS_opencvfft-openmp  = -DFFT=OpenCV -DOPENMP=ON
-CMAKE_OTPS_fftw              = -DFFT=fftw
-CMAKE_OTPS_fftw-openmp       = -DFFT=fftw -DOPENMP=ON
-CMAKE_OTPS_fftw-async        = -DFFT=fftw -DASYNC=ON
-CMAKE_OTPS_fftw-big          = -DFFT=fftw -DBIG_BATCH=ON
-CMAKE_OTPS_fftw-big-openmp   = -DFFT=fftw -DBIG_BATCH=ON -DOPENMP=ON
-CMAKE_OTPS_cufftw            = -DFFT=cuFFTW $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)')
-CMAKE_OTPS_cufftw-big        = -DFFT=cuFFTW $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON
-CMAKE_OTPS_cufftw-big-openmp = -DFFT=cuFFTW $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON -DOPENMP=ON
-CMAKE_OTPS_cufft             = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)')
-CMAKE_OTPS_cufft-openmp	     = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DOPENMP=ON
-CMAKE_OTPS_cufft-big         = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON
-CMAKE_OTPS_cufft-big-openmp  = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON -DOPENMP=ON
+CMAKE_OTPS_opencvfft-st           = -DFFT=OpenCV
+CMAKE_OTPS_opencvfft-async        = -DFFT=OpenCV -DASYNC=ON
+CMAKE_OTPS_opencvfft-openmp       = -DFFT=OpenCV -DOPENMP=ON
+CMAKE_OTPS_fftw                   = -DFFT=fftw
+CMAKE_OTPS_fftw-openmp            = -DFFT=fftw -DOPENMP=ON
+CMAKE_OTPS_fftw-async             = -DFFT=fftw -DASYNC=ON
+CMAKE_OTPS_fftw-big               = -DFFT=fftw -DBIG_BATCH=ON
+CMAKE_OTPS_fftw-big-openmp        = -DFFT=fftw -DBIG_BATCH=ON -DOPENMP=ON
+CMAKE_OTPS_cufftw                 = -DFFT=cuFFTW $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)')
+CMAKE_OTPS_cufftw-openmp          = -DFFT=cuFFTW $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DOPENMP=ON
+CMAKE_OTPS_cufftw-big             = -DFFT=cuFFTW $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON
+CMAKE_OTPS_cufftw-big-openmp      = -DFFT=cuFFTW $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON -DOPENMP=ON
+CMAKE_OTPS_cufft                  = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)')
+CMAKE_OTPS_cufft-openmp           = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DOPENMP=ON
+CMAKE_OTPS_cufft-big              = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON
+CMAKE_OTPS_cufft-big-openmp       = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON -DOPENMP=ON
+CMAKE_OTPS_cufft-trad             = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DUSE_CUDA_MEMCPY=ON
+CMAKE_OTPS_cufft-openmp-trad      = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DOPENMP=ON -DUSE_CUDA_MEMCPY=ON
+CMAKE_OTPS_cufft-big-trad         = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON -DUSE_CUDA_MEMCPY=ON
+CMAKE_OTPS_cufft-big-openmp-trad  = -DFFT=cuFFT  $(if $(CUDA_ARCH_LIST),-DCUDA_ARCH_LIST='$(CUDA_ARCH_LIST)') -DBIG_BATCH=ON -DOPENMP=ON -DUSE_CUDA_MEMCPY=ON
 
 ##########################
 ### Tests

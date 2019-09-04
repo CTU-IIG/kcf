@@ -15,7 +15,7 @@ void Fft::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned 
 #endif
 }
 
-void Fft::set_window(const MatDynMem &window)
+void Fft::set_window(const cv::Mat &window)
 {
     assert(window.dims == 2);
     assert(window.size().width == int(m_width));
@@ -46,6 +46,7 @@ void Fft::forward(const MatScales &real_input, ComplexMat &complex_result)
 
 void Fft::forward_window(MatScaleFeats &patch_feats, ComplexMat &complex_result, MatScaleFeats &tmp)
 {
+        TRACE("");
         assert(patch_feats.dims == 4);
 #ifdef BIG_BATCH
         assert(patch_feats.size[0] == 1 || patch_feats.size[0] ==  int(m_num_of_scales));
