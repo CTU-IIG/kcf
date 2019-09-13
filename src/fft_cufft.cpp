@@ -1,11 +1,8 @@
 #include "fft_cufft.h"
 
-cuFFT::cuFFT()
-{
-    CudaSafeCall(cudaSetDeviceFlags(cudaDeviceMapHost));
-    cudaErrorCheck(cublasCreate(&cublas));
-    cudaErrorCheck(cublasSetStream(cublas, cudaStreamPerThread));
-}
+MatDynMem* cuFFT::m_window = nullptr;
+
+cuFFT::cuFFT(){}
 
 cufftHandle cuFFT::create_plan_fwd(uint howmany) const
 {
@@ -40,8 +37,6 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 {
     Fft::init(width, height, num_of_feats, num_of_scales);
 
-    std::cout << "FFT: cuFFT" << std::endl;
-
     plan_f = create_plan_fwd(1);
     plan_fw = create_plan_fwd(m_num_of_feats);
     plan_i_1ch = create_plan_inv(1);
@@ -53,10 +48,11 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 #endif
 }
 
-void cuFFT::set_window(const MatDynMem &window)
+void cuFFT::set_window(const cv::Mat &window)
 {
     Fft::set_window(window);
-    m_window = window;
+    if(m_window) delete m_window;
+    m_window = new MatDynMem(window);
 }
 
 void cuFFT::forward(const MatScales &real_input, ComplexMat &complex_result)
@@ -74,19 +70,22 @@ void cuFFT::forward(const MatScales &real_input, ComplexMat &complex_result)
 
 void cuFFT::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatScaleFeats &temp)
 {
+
     Fft::forward_window(feat, complex_result, temp);
 
-    cufftReal *temp_data = temp.deviceMem();
     uint n_scales = feat.size[0];
 
-    for (uint s = 0; s < n_scales; ++s) {
-        for (uint ch = 0; ch < uint(feat.size[1]); ++ch) {
-            cv::Mat feat_plane = feat.plane(s, ch);
-            cv::Mat temp_plane = temp.plane(s, ch);
-            temp_plane = feat_plane.mul(m_window);
-        }
+#if 0
+    float *tmp_ptr = temp.ptr<float>();
+    float *feat_ptr = feat.ptr<float>();
+    float *window_ptr = (*m_window).ptr<float>();
+    for (uint s = 0; s < feat.total(); ++s) {
+       tmp_ptr[s] = feat_ptr[s] * window_ptr[s%m_window->total()];
     }
-
+#else
+    applyWindow(feat,*m_window,temp);
+#endif
+    cufftReal *temp_data = temp.deviceMem();
     if (n_scales == 1)
         cudaErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_dev_data()));
 #ifdef BIG_BATCH
@@ -110,16 +109,11 @@ void cuFFT::inverse(ComplexMat &complex_input, MatScales &real_result)
     else
         cudaErrorCheck(cufftExecC2R(plan_i_all_scales, in, out));
 #endif
-    cudaErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
-    // The result is a cv::Mat, which will be accesses by CPU, so we
-    // must synchronize with the GPU here
-    CudaSafeCall(cudaStreamSynchronize(cudaStreamPerThread));
+    scale(real_result, alpha);
 }
 
 cuFFT::~cuFFT()
 {
-    cudaErrorCheck(cublasDestroy(cublas));
-
     cudaErrorCheck(cufftDestroy(plan_f));
     cudaErrorCheck(cufftDestroy(plan_fw));
     cudaErrorCheck(cufftDestroy(plan_i_1ch));

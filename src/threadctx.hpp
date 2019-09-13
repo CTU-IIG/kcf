@@ -7,6 +7,17 @@
 #include "complexmat.hpp"
 #include <vector>
 
+#ifdef FFTW
+#include "fft_fftw.h"
+typedef Fftw FFT;
+#elif defined(CUFFT)
+#include "fft_cufft.h"
+typedef cuFFT FFT;
+#else
+#include "fft_opencv.h"
+typedef FftOpencv FFT;
+#endif
+
 class KCF_Tracker;
 
 template <typename T>
@@ -28,6 +39,7 @@ private:
 };
 
 struct ThreadCtx {
+  friend KCF_Tracker;
   public:
     ThreadCtx(cv::Size roi, uint num_features
 #ifdef BIG_BATCH
@@ -38,7 +50,8 @@ struct ThreadCtx {
               , double angle
 #endif
              )
-        : roi(roi)
+        : fft(*new FFT())
+        , roi(roi)
         , num_features(num_features)
         , num_scales(IF_BIG_BATCH(scales.size(), 1))
         , num_angles(IF_BIG_BATCH(angles.size(), 1))
@@ -60,6 +73,7 @@ struct ThreadCtx {
 
     void track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray);
 private:
+    FFT &fft;
     cv::Size roi;
     uint num_features;
     uint num_scales;

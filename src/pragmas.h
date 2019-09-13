@@ -9,7 +9,7 @@
 #elif defined(OPENMP)
 #define BIG_BATCH_OMP_PARALLEL_FOR
 #define BIG_BATCH_OMP_ORDERED
-#define NORMAL_OMP_PARALLEL_FOR _Pragma("omp parallel for schedule(dynamic)")
+#define NORMAL_OMP_PARALLEL_FOR _Pragma("omp parallel for schedule(static,1) proc_bind(close) num_threads(15)")
 #define NORMAL_OMP_CRITICAL _Pragma("omp critical")
 #else
 #define BIG_BATCH_OMP_PARALLEL_FOR
