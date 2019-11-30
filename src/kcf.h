@@ -140,12 +140,143 @@ private:
         ComplexMat model_xf {height, width, n_feats};
         ComplexMat xf {height, width, n_feats};
 
+        
         // Temporary variables for trainig
         MatScaleFeats patch_feats{1, n_feats, feature_size};
         MatScaleFeats temp{1, n_feats, feature_size};
 
+        //-------------------------------------------
+        //START OF TEST COMPLEXMAT CONVERSION
+        //-------------------------------------------
+        
+        //consider converting to cv::Mat_< std::complex<float> >
+        cv::Mat yf_Test {height, width, CV_32FC1};
+        cv::Mat model_alphaf_Test {height, width, CV_32FC1};
+        cv::Mat model_alphaf_num_Test {height, width, CV_32FC1};
+        cv::Mat model_alphaf_den_Test {height, width, CV_32FC1};
+        cv::Mat model_xf_Test {height, width, CV_32FC(n_feats)};
+        cv::Mat xf_Test {height, width, CV_32FC(n_feats)};
 
+        
+        static cv::Mat same_size(const cv::Mat &o)
+        {
+            return cv::Mat(o.rows, o.cols, o.channels());
+        }
+        
+        //------
+        //size() and channel() already implemented in cv::Mat
+        //------
+        
+        void set_channel(uint idx, const cv::Mat &mat, cv::Mat &host)
+        {
+            assert(idx < host.channels());
+            //TODO, part of complexmat.hpp
+            cudaSync();
+            for (uint i = 0; i < host.rows; ++i) {
+                const std::complex<T> *row = mat.ptr<std::complex<T>>(i);
+                for (uint j = 0; j < host.cols; ++j)
+                    //TODO (study its purpose, replace p_data)
+                    //idx = likely channel number
+                    //made for cv::Mat with 2+ channels (so i probably dont need std::complex<float> ? [yes])
+                    //just put it in the premade channel in cv::Mat as needed
+                    //
+                    //EDIT: consider using this to access and write to channels:
+                    // m.at<Vec2f>( row, col )[0] = 1986.0f;
+                    // m.at<Vec2f>( row, col )[1] = 326.0f;
+                    p_data.hostMem()[idx * host.rows * host.cols + i * host.cols + j] = row[j];
+            }
+        }
+        
+        //------------------
+        // YET TO BE EDITED
+        //------------------
+        
+        // T is constant defined as float
+        float sqr_norm() const;
+        
+        void sqr_norm(DynMem_<T> &result) const;
 
+        cv::Mat sqr_mag() const;
+
+        cv::Mat conj() const;
+
+        cv::Mat sum_over_channels() const;
+        
+        // return 2 channels (real, imag) for first complex channel
+        cv::Mat to_cv_mat() const
+        {
+            assert(p_data.num_elem >= 1);
+            return channel_to_cv_mat(0);
+        }
+        
+        cv::Mat channel_to_cv_mat(int channel_id) const
+        {
+            cv::Mat result(rows, cols, CV_32FC2);
+            for (uint y = 0; y < rows; ++y) {
+                std::complex<T> *row_ptr = result.ptr<std::complex<T>>(y);
+                for (uint x = 0; x < cols; ++x) {
+                    row_ptr[x] = p_data[channel_id * rows * cols + y * cols + x];
+                }
+            }
+            return result;
+        }
+        
+        // return a vector of 2 channels (real, imag) per one complex channel
+        std::vector<cv::Mat> to_cv_mat_vector() const
+        {
+            std::vector<cv::Mat> result;
+            result.reserve(n_channels);
+
+            for (uint i = 0; i < n_channels; ++i)
+                result.push_back(channel_to_cv_mat(i));
+
+            return result;
+        }
+        
+        // Probably unnecessary now, check usage
+        std::complex<T> *get_p_data() {
+            cudaSync();
+            return p_data.hostMem();
+        }
+        // Probably unnecessary now, check usage
+        const std::complex<T> *get_p_data() const {
+            cudaSync();
+            return p_data.hostMem();
+        }
+        
+        //------
+        // operator functions implemented in cv::Mat
+        //------
+        
+        // convert 2 channel mat (real, imag) to vector row-by-row
+        std::vector<std::complex<T>> convert(const cv::Mat &mat)
+        {
+            std::vector<std::complex<T>> result;
+            result.reserve(mat.cols * mat.rows);
+            for (int y = 0; y < mat.rows; ++y) {
+                const T *row_ptr = mat.ptr<T>(y);
+                for (int x = 0; x < 2 * mat.cols; x += 2) {
+                    result.push_back(std::complex<T>(row_ptr[x], row_ptr[x + 1]));
+                }
+            }
+            return result;
+        }
+        
+        ComplexMat_ mat_mat_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
+                                     const ComplexMat_ &mat_rhs) const;
+        ComplexMat_ matn_mat1_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
+                                       const ComplexMat_ &mat_rhs) const;
+        ComplexMat_ matn_mat2_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
+                                       const ComplexMat_ &mat_rhs) const;
+        ComplexMat_ mat_const_operator(const std::function<void(std::complex<T> &c_rhs)> &op) const;
+        
+        void cudaSync() const {}
+        
+        //-------------------------------------------
+        //END OF TEST COMPLEXMAT CONVERSION
+        //-------------------------------------------
+        
+        
         Model(cv::Size feature_size, uint _n_feats)
             : feature_size(feature_size)
             , height(Fft::freq_size(feature_size).height)
