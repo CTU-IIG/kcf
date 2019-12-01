@@ -183,13 +183,20 @@ private:
             }
         }
         
-        // DEFINE (=copy definition of) THIS BLOCK IN kcf.cpp
-        // T type in sqr_norm() is constant defined as float
-        float sqr_norm() const;        
-        void sqr_norm(DynMem_<T> &result) const;
+        // This computes a float value using elements in individual channels
+        float sqr_norm(cv::Mat &host) const; 
+        
+        // This edits given Dynmem to contain computed float value in its [1] position (why?)
+        void sqr_norm(DynMem_<T> &result, cv::Mat &host) const;
+        
+        // Applies square operation to all elements in all channels
         cv::Mat sqr_mag() const;
+        
+        // Applies "invert imaginary number" operation to all elements in all channels
         cv::Mat conj() const;
-        cv::Mat sum_over_channels() const;
+        
+        // DEFINE (=copy definition of) THIS BLOCK IN kcf.cpp 
+        cv::Mat sum_over_channels(cv::Mat &host) const;
         
         //------
         // to_cv_mat() and channel_to_cv_mat() unnecesary, since the data is already cv::Mat format
@@ -221,7 +228,7 @@ private:
         }
         
         //------
-        // operator functions implemented in cv::Mat
+        // operator and mul() functions implemented in cv::Mat
         //------
         
         // READY FOR TESTING
@@ -240,6 +247,7 @@ private:
         }
         
         // DEFINE (=copy definition of) THIS BLOCK IN kcf.cpp
+        // [ possibly completely replaced by cv::Mat.forEach() ]
         ComplexMat_ mat_mat_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
                                      const ComplexMat_ &mat_rhs) const;
         ComplexMat_ matn_mat1_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
