@@ -28,7 +28,7 @@
 
 
 // READY FOR TESTING
-static cv::Mat same_size(const cv::Mat &o)
+cv::Mat same_size(const cv::Mat &o)
 {
     return cv::Mat(o.rows, o.cols, o.channels());
 }
@@ -38,6 +38,8 @@ static cv::Mat same_size(const cv::Mat &o)
 //------
 
 // READY FOR TESTING
+// ANALYSE USAGE 
+// Used only at fft_opencv.cpp in a single place.
 // assuming that mat has 2 channels (real, imag)
 void set_channel(uint idx, const cv::Mat &mat, cv::Mat &host)
 {
@@ -87,19 +89,10 @@ std::vector<cv::Mat> to_cv_mat_vector() const
     return result;
 }
 
-// Probably unnecessary now, check usage
-std::complex<T> *get_p_data() {
-    cudaSync();
-    return p_data.hostMem();
-}
-// Probably unnecessary now, check usage
-const std::complex<T> *get_p_data() const {
-    cudaSync();
-    return p_data.hostMem();
-}
 
 //------
-// operator and mul() functions implemented in cv::Mat
+// get_p_data() unnecessary
+// mul() and operator functions implemented in cv::Mat
 //------
 
 // READY FOR TESTING
