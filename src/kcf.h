@@ -148,12 +148,12 @@ private:
         
         // FORMER ATTRIBUTES CONVERTED TO cv::Mat
         // Something about not being able to tell which kind of cv::Mat (complex matrix does not equal 2 channels !)
-        cv::Mat yf_Test {height, width, CV_32FC1};
-        cv::Mat model_alphaf_Test {height, width, CV_32FC1};
-        cv::Mat model_alphaf_num_Test {height, width, CV_32FC1};
-        cv::Mat model_alphaf_den_Test {height, width, CV_32FC1};
-        cv::Mat model_xf_Test {height, width, CV_32FC(n_feats)};
-        cv::Mat xf_Test {height, width, CV_32FC(n_feats)};
+        cv::Mat yf_Test {(int) height, (int) width, CV_32FC1};
+        cv::Mat model_alphaf_Test {(int) height, (int) width, CV_32FC1};
+        cv::Mat model_alphaf_num_Test {(int) height, (int) width, CV_32FC1};
+        cv::Mat model_alphaf_den_Test {(int) height, (int) width, CV_32FC1};
+        cv::Mat model_xf_Test {(int) height, (int) width, CV_32FC(n_feats)};
+        cv::Mat xf_Test {(int) height, (int) width, CV_32FC(n_feats)};
 
         
         
