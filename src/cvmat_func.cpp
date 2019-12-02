@@ -3,6 +3,7 @@
 
 float sqr_norm(cv::Mat &host) const
 {
+    // test
     int n_channels_per_scale = host.channels();
     float sum_sqr_norm = 0;
     for (int i = 0; i < n_channels_per_scale; ++i) {
