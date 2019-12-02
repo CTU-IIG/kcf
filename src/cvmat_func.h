@@ -27,7 +27,7 @@
 
 
 
-// READY FOR TESTING
+// CHECK USAGE, OTHERWISE DONE
 cv::Mat same_size(const cv::Mat &o)
 {
     return cv::Mat(o.rows, o.cols, o.channels());
@@ -37,9 +37,8 @@ cv::Mat same_size(const cv::Mat &o)
 //size() and channel() already implemented in cv::Mat
 //------
 
-// READY FOR TESTING
-// ANALYSE USAGE 
-// Used only at fft_opencv.cpp in a single place.
+// ANALYSE USAGE, EDIT AND SIMPLIYFY
+// Used only in a single place at fft_opencv.cpp .
 // assuming that mat has 2 channels (real, imag)
 void set_channel(uint idx, const cv::Mat &mat, cv::Mat &host)
 {
@@ -56,7 +55,7 @@ void set_channel(uint idx, const cv::Mat &mat, cv::Mat &host)
     }
 }
 
-// This computes a float value using elements in individual channels
+// This computes a float value using elements in individual channels (seems unused)
 float sqr_norm(cv::Mat &host) const; 
 
 // This edits given Dynmem to contain computed float value in its [1] position (why?)
@@ -119,7 +118,6 @@ ComplexMat_ matn_mat1_operator(void (*op)(std::complex<T> &c_lhs, const std::com
 ComplexMat_ matn_mat2_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
                                const ComplexMat_ &mat_rhs) const;
 ComplexMat_ mat_const_operator(const std::function<void(std::complex<T> &c_rhs)> &op) const;
-void cudaSync() const {}
         
 
 
