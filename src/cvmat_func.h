@@ -26,33 +26,18 @@
 #include "pragmas.h"
 
 
-
-// CHECK USAGE, OTHERWISE DONE
-cv::Mat same_size(const cv::Mat &o)
-{
-    return cv::Mat(o.rows, o.cols, o.channels());
-}
-
 //------
+//same_size() only used in complexmat.cu , ignored
 //size() and channel() already implemented in cv::Mat
 //------
 
-// ANALYSE USAGE, EDIT AND SIMPLIYFY
-// Used only in a single place at fft_opencv.cpp .
-// assuming that mat has 2 channels (real, imag)
+// READY FOR USE
+// Used only in a single place at fft_opencv.cpp, target is ComplexMat (convert first)
+// Probably easier to use this inline.
 void set_channel(uint idx, const cv::Mat &mat, cv::Mat &host)
 {
     assert(idx < host.channels());
-    //TODO, part of complexmat.hpp
-    cudaSync();
-
-    for (uint i = 0; i < host.rows; ++i) {
-        const std::complex<float> *row = mat.ptr<std::complex<float>>(i);
-        const std::complex<float> *host_ptr = host.ptr<std::complex<float>>(i);
-        for (uint j = 0; j < cols; ++j)
-            // Can I actually assign like this? Test it.
-            host_ptr[j] = std::complex<float>(row[j]);
-    }
+    cv::mixChannels( &mat, 1, &host, 1, { idx,idx }, 1 );
 }
 
 // This computes a float value using elements in individual channels (seems unused)
