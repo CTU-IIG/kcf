@@ -37,6 +37,7 @@
 void set_channel(uint idx, const cv::Mat &mat, cv::Mat &host)
 {
     assert(idx < host.channels());
+    assert(idx < mat.channels());
     cv::mixChannels( &mat, 1, &host, 1, { idx,idx }, 1 );
 }
 
