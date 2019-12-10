@@ -20,6 +20,13 @@ void FftOpencv::forward(const MatScales &real_input, ComplexMat &complex_result)
     complex_result = ComplexMat(tmp);
 }
 
+void FftOpencv::forward(const cv::Mat &real_input, cv::Mat &complex_result)
+{
+//    Fft::forward(real_input, complex_result);
+
+    cv::dft(real_input, complex_result, cv::DFT_COMPLEX_OUTPUT);
+}
+
 void FftOpencv::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatScaleFeats &temp)
 {
     Fft::forward_window(feat, complex_result, temp);

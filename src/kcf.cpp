@@ -236,8 +236,20 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     MatScales gsl(1, feature_size);
     gaussian_shaped_labels(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl.plane(0));
     fft.forward(gsl, model->yf);
-    DEBUG_PRINTM(model->yf);
 
+//    REPLACEMENT
+    cv::Mat gsl2(feature_size,CV_32F);
+    gaussian_shaped_labels(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl2);
+    fft.forward(gsl2, model->yf_Test);
+    
+    DEBUG_PRINTM(model->yf);
+    DEBUG_PRINTM(model->yf_Test);
+
+//    Accessing cv::Mat real/imag channels
+//    std::complex<float>* f1 = model->yf_Test.ptr< std::complex<float> >(0);
+//    float f2 = (*f1).real();
+//    float f3 = (*f1).imag();
+    
     // train initial model
     train(input_rgb, input_gray, 1.0);
 }
