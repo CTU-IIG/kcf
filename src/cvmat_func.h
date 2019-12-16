@@ -104,7 +104,19 @@ ComplexMat_ matn_mat1_operator(void (*op)(std::complex<T> &c_lhs, const std::com
 ComplexMat_ matn_mat2_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
                                const ComplexMat_ &mat_rhs) const;
 ComplexMat_ mat_const_operator(const std::function<void(std::complex<T> &c_rhs)> &op) const;
-        
+   
+
+/*
+ * Function for getting cv::Mat header referencing height and width of the input matrix.
+ * Presumes input matrix of 4 dimensions with format: {scales, features, height, width}
+ **/
+cv::Mat plane(uint scale, uint feature, cv::Mat &host);
+
+/*
+ * Function for getting cv::Mat header referencing features, height and width of the input matrix.
+ * Presumes input matrix of 4 dimensions with format: {scales, features, height, width}
+ **/
+cv::Mat scale(uint scale, cv::Mat &host);
 
 
 #endif /* CVMAT_FUNC_H */

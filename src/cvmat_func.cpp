@@ -14,3 +14,16 @@ float sqr_norm(cv::Mat &host) const
     sum_sqr_norm = sum_sqr_norm / (float)(host.cols * host.rows);
     return sum_sqr_norm;
 }
+
+cv::Mat plane(uint scale, uint feature, cv::Mat &host) {
+    assert(host.dims == 4);
+    assert(int(scale) < host.size[0]);
+    assert(int(feature) < host.size[1]);
+    return cv::Mat(host.size[2], host.size[3], host.type(), host.ptr(scale, feature));
+}
+
+cv::Mat scale(uint scale, cv::Mat &host) {
+    assert(host.dims == 4);
+    assert(int(scale) < host.size[0]);
+    return cv::Mat(3, std::vector<int>({host.size[1], host.size[2], host.size[3]}).data(), host.type(), host.ptr(scale));
+}

@@ -155,6 +155,8 @@ private:
         cv::Mat model_xf_Test {(int) height, (int) width, CV_32FC(n_feats)};
         cv::Mat xf_Test {(int) height, (int) width, CV_32FC(n_feats)};
 
+        cv::Mat patch_feats_Test{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
+        cv::Mat temp_Test{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
         
         
         Model(cv::Size feature_size, uint _n_feats)

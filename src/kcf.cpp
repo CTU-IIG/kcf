@@ -1,4 +1,5 @@
 #include "kcf.h"
+#include "cvmat_func.h"
 #include <numeric>
 #include <thread>
 #include <algorithm>
@@ -74,6 +75,12 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
     get_features(input_rgb, input_gray, nullptr, p_current_center.x, p_current_center.y,
                  p_windows_size.width, p_windows_size.height,
                  p_current_scale, p_current_angle).copyTo(model->patch_feats.scale(0));
+    
+    // REPLACEMENT
+    get_features(input_rgb, input_gray, nullptr, p_current_center.x, p_current_center.y,
+                 p_windows_size.width, p_windows_size.height,
+                 p_current_scale, p_current_angle).copyTo(scale(0, model->patch_feats_Test));
+    
     DEBUG_PRINT(model->patch_feats);
     fft.forward_window(model->patch_feats, model->xf, model->temp);
     DEBUG_PRINTM(model->xf);
