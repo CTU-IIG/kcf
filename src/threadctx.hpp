@@ -70,8 +70,8 @@ private:
     MatScaleFeats temp{num_scales * num_angles, num_features, roi};
     
     // REPLACEMENT
-    cv::Mat patch_feats_Test{ 4, std::vector<int>({ num_scales * num_angles, int(num_features), roi.height, roi.width}).data(), CV_32F};
-    cv::Mat temp_Test{ 4, std::vector<int>({ num_scales * num_angles, int(num_features), roi.height, roi.width}).data(), CV_32F};
+    cv::Mat patch_feats_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
+    cv::Mat temp_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
 
     KCF_Tracker::GaussianCorrelation gaussian_correlation{num_scales * num_angles, num_features, roi};
 

@@ -82,8 +82,11 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
                  p_current_scale, p_current_angle).copyTo(scale(0, model->patch_feats_Test));
     
     DEBUG_PRINT(model->patch_feats);
+    DEBUG_PRINT(model->patch_feats_Test);
     fft.forward_window(model->patch_feats, model->xf, model->temp);
+    fft.forward_window(model->patch_feats_Test, model->xf_Test, model->temp_Test);
     DEBUG_PRINTM(model->xf);
+    DEBUG_PRINTM(model->xf_Test);
     model->model_xf = model->model_xf * (1. - interp_factor) + model->xf * interp_factor;
     DEBUG_PRINTM(model->model_xf);
 
