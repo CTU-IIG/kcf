@@ -89,8 +89,10 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
     DEBUG_PRINTM(model->xf);
     DEBUG_PRINTM(model->xf_Test);
     model->model_xf = model->model_xf * (1. - interp_factor) + model->xf * interp_factor;
+    model->model_xf_Test = model->model_xf_Test * (1. - interp_factor) + model->xf_Test * interp_factor;
     DEBUG_PRINTM(model->model_xf);
-
+    DEBUG_PRINTM(model->model_xf_Test);
+    
     if (m_use_linearkernel) {
         ComplexMat xfconj = model->xf.conj();
         model->model_alphaf_num = xfconj.mul(model->yf);
