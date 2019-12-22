@@ -10,7 +10,7 @@ std::ostream &operator<<(std::ostream &os, const DbgTracer::Printer<cv::Mat> &p)
     const size_t num = 10; //p.obj.total();
     for (size_t i = 0; i < std::min(num, p.obj.total() * p.obj.channels()); ++i)
         os << p.obj.ptr<float>()[i] << ", ";
-    os << (num < p.obj.total() ? "... ]" : "]");
+    os << (num < (p.obj.total() * p.obj.channels()) ? "... ]" : "]");
     return os;
 }
 
