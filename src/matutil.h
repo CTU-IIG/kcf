@@ -103,18 +103,13 @@ static cv::Mat scale(uint scale, cv::Mat &host) {
    
 
 /*
- * Sets the source as channel number idx of target matrix.
- **/
+ * Sets channel number idxFrom of the source as channel number idxTo of target matrix.
+ * Uses native format of cv::Mat to store channels, meaning all channel values of each pixel
+ * are next to each other in the internal array (1 pixel = continuous block).
+ * Previous format saved all pixel values of each channel next to each other.
+**/ 
 static void set_channel(int idxFrom, int idxTo, cv::Mat &source, cv::Mat &target)
 {
-//    assert(idx < n_channels);
-//    for (uint i = 0; i < rows; ++i) {
-//        const std::complex<float> *row = source.ptr< std::complex<float> >(i);
-//        for (uint j = 0; j < cols; ++j)
-//            p_data.hostMem()[idx * rows * cols + i * cols + j] = row[j];
-//    }
-    
-    
     assert(idxTo < target.channels());
     assert(idxFrom < source.channels());
     int from_to[] = { idxFrom,idxTo };

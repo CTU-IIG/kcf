@@ -1,5 +1,6 @@
 #include "kcf.h"
-#include "cvmat_func.h"
+#include "matutil.h"
+#include <opencv2/core/core.hpp>
 #include <numeric>
 #include <thread>
 #include <algorithm>
@@ -79,7 +80,7 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
     // REPLACEMENT
     get_features(input_rgb, input_gray, nullptr, p_current_center.x, p_current_center.y,
                  p_windows_size.width, p_windows_size.height,
-                 p_current_scale, p_current_angle).copyTo(scale(0, model->patch_feats_Test));
+                 p_current_scale, p_current_angle).copyTo(MatUtil::scale(0, model->patch_feats_Test));
     
     DEBUG_PRINT(model->patch_feats);
     DEBUG_PRINT(model->patch_feats_Test);
@@ -122,6 +123,18 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     __dbgTracer.debug = m_debug;
     TRACE("");
 
+//    cv::Mat test = cv::Mat(3,2,CV_32FC3,float(4));
+//    cv::Mat test2 = cv::Mat(3,2,CV_32F,float(6));
+//    int from_to[] = { 0,2 };
+//    cv::mixChannels(&test2,1,&test,1,from_to,1);
+//    
+//    float val1 = test.ptr<float>(1)[0];
+//    test.ptr<float>(1)[0] = float(5);
+//    DEBUG_PRINTM(test);
+//    DEBUG_PRINTM(val1);
+//    
+//    return;
+//    
     // check boundary, enforce min size
     double x1 = bbox.x, x2 = bbox.x + bbox.width, y1 = bbox.y, y2 = bbox.y + bbox.height;
     if (x1 < 0) x1 = 0.;

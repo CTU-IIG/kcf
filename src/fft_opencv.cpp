@@ -1,5 +1,6 @@
 #include "fft_opencv.h"
-#include "cvmat_func.h"
+#include "matutil.h"
+#include "debug.h"
 
 void FftOpencv::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales)
 {
@@ -44,16 +45,19 @@ void FftOpencv::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, 
 }
 
 // REPLACEMENT
+// Real and imag parts of complex elements from previous format are represented by 2 neighbouring channels.
 void FftOpencv::forward_window(cv::Mat &feat, cv::Mat &complex_result, cv::Mat &temp)
 {
     //Fft::forward_window(feat, complex_result, temp);
-(void) temp;
+    (void) temp;
     for (uint i = 0; i < uint(feat.size[0]); ++i) {
         for (uint j = 0; j < uint(feat.size[1]); ++j) {
             cv::Mat complex_res;
-            cv::Mat channel = plane(i, j, feat);
+            cv::Mat channel = MatUtil::plane(i, j, feat);
             cv::dft(channel.mul(m_window), complex_res, cv::DFT_COMPLEX_OUTPUT);
-            set_channel(int(j), complex_res, complex_result);
+            
+            MatUtil::set_channel(int(0), int(2*j), complex_res, complex_result);
+            MatUtil::set_channel(int(1), int(2*j+1), complex_res, complex_result);
         }
     }
 }
