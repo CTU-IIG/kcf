@@ -121,8 +121,13 @@ static cv::Mat conj(cv::Mat &host){
     return host;
 }
 
-static cv::Mat mul(cv::Mat &host, cv::Mat &other){
+static cv::Mat mul_matn_mat1(cv::Mat &host, cv::Mat &other){
     matn_mat1_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
+    return host;
+}
+
+static cv::Mat mul_matn_matn(cv::Mat &host, cv::Mat &other){
+    mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
     return host;
 }
 
@@ -159,32 +164,20 @@ static void matn_mat1_operator(void (*op)(std::complex<float> &, const std::comp
 
 static void mat_mat_operator(void (*op)(std::complex<float> &, const std::complex<float> &), cv::Mat &host, cv::Mat &other){
     assert(host.channels() % 2 == 0);
-    assert(other.channels() == 2);
+    assert(other.channels() == host.channels());
     assert(other.cols == host.cols);
     assert(other.rows == host.rows);
     
     for (int i = 0; i < host.rows; ++i) {
         for (int j = 0; j < host.cols; ++j){
-            std::complex<float> cpxValOther = other.ptr<std::complex<float>>(i)[j];
             for (int k = 0; k < host.channels() / 2 ; ++k){
                 std::complex<float> cpxValHost = host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k];
+                std::complex<float> cpxValOther = other.ptr<std::complex<float>>(i)[(other.channels() / 2)*j + k];
                 op(cpxValHost, cpxValOther);
                 host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k] = cpxValHost;
             }
         }
     }
-    
-//    assert(mat_rhs.n_channels == n_channels/n_scales && mat_rhs.cols == cols && mat_rhs.rows == rows);
-//
-//    ComplexMat_ result = *this;
-//    for (uint s = 0; s < n_scales; ++s) {
-//        auto lhs = result.p_data.hostMem() + (s * n_channels/n_scales * rows * cols);
-//        auto rhs = mat_rhs.p_data.hostMem();
-//        for (uint i = 0; i < n_channels/n_scales * rows * cols; ++i)
-//            op(*(lhs + i), *(rhs + i));
-//    }
-//
-//    return result;
 }
 
 
