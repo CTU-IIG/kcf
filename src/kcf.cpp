@@ -1,5 +1,6 @@
 #include "kcf.h"
 #include "matutil.h"
+#include "debug.h"
 #include <opencv2/core/core.hpp>
 #include <numeric>
 #include <thread>
@@ -97,6 +98,9 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
         ComplexMat xfconj = model->xf.conj();
         model->model_alphaf_num = xfconj.mul(model->yf);
         model->model_alphaf_den = (model->xf * xfconj);
+        
+        cv::Mat xfconj_Test = MatUtil::conj(model->xf_Test);
+        model->model_alphaf_num_Test = xfconj_Test.mul(model->yf);
     } else {
         // Kernel Ridge Regression, calculate alphas (in Fourier domain)
         cv::Size sz(Fft::freq_size(feature_size));
@@ -105,6 +109,11 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
         DEBUG_PRINTM(kf);
         model->model_alphaf_num = model->yf * kf;
         model->model_alphaf_den = kf * (kf + p_lambda);
+        
+        
+//        cv::Mat kf_Test = cv::Mat(sz.height, sz.width, CV_32F);
+//        (*gaussian_correlation)(kf_Test, model->model_xf_Test, model->model_xf_Test, p_kernel_sigma, true, *this);
+//        DEBUG_PRINTM(kf_Test);
     }
     model->model_alphaf = model->model_alphaf_num / model->model_alphaf_den;
     DEBUG_PRINTM(model->model_alphaf);
@@ -125,15 +134,46 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     __dbgTracer.debug = m_debug;
     TRACE("");
 
-//    cv::Mat test = cv::Mat(3,2,CV_32FC3,float(4));
-//    cv::Mat test2 = cv::Mat(3,2,CV_32F,float(6));
-//    int from_to[] = { 0,2 };
-//    cv::mixChannels(&test2,1,&test,1,from_to,1);
+//    cv::Mat test = cv::Mat(2,2,CV_32FC4,float(0));
+////    cv::Mat test2 = cv::Mat(3,2,CV_32F,float(6));
+////    int from_to[] = { 0,3 };
+////    cv::mixChannels(&test2,1,&test,1,from_to,1);
 //    
-//    float val1 = test.ptr<float>(1)[0];
-//    test.ptr<float>(1)[0] = float(5);
+////    cv::Mat_<std::complex<float>> testComplex = cv::Mat_<std::complex<float>>(test2);
+//    
+//    test.ptr<float>(0)[0] = float(1);
+//    test.ptr<float>(0)[1] = float(2);
+//    test.ptr<float>(0)[2] = float(3);
+//    test.ptr<float>(0)[3] = float(4);
+//    test.ptr<float>(0)[4] = float(5);
+//    test.ptr<float>(0)[5] = float(6);
+//    test.ptr<float>(0)[6] = float(7);
+//    test.ptr<float>(0)[7] = float(8);
+//    test.ptr<float>(1)[0] = float(9);
+//    test.ptr<float>(1)[1] = float(10);
+//    test.ptr<float>(1)[2] = float(11);
+//    test.ptr<float>(1)[3] = float(12);
+//    test.ptr<float>(1)[4] = float(13);
+//    test.ptr<float>(1)[5] = float(14);
+//    test.ptr<float>(1)[6] = float(15);
+//    test.ptr<float>(1)[7] = float(16);
+//    
+//    
+//    assert(test.channels() % 2 == 0);
+//    for (uint i = 0; i < test.rows; ++i) {
+//        for (uint j = 0; j < test.cols; ++j){
+//            for (uint k = 0; k < test.channels() / 2 ; ++k){
+//                std::complex<float> cpxVal = test.ptr<std::complex<float>>(i)[(test.channels() / 2)*j + k];
+//                cpxVal.imag(- cpxVal.imag());
+//                test.ptr<std::complex<float>>(i)[(test.channels() / 2)*j + k] = cpxVal;
+//                DEBUG_PRINTM(cpxVal);
+//            }
+//        }
+//    }
+//    
+//    
 //    DEBUG_PRINTM(test);
-//    DEBUG_PRINTM(val1);
+//    
 //    
 //    return;
 //    

@@ -116,6 +116,26 @@ static void set_channel(int idxFrom, int idxTo, cv::Mat &source, cv::Mat &target
     cv::mixChannels( &source, 1, &target, 1, from_to, 1 );
 }
 
+static cv::Mat conj(cv::Mat &host){
+    iterate_complex_mat([](std::complex<float> &c) { c = std::complex<float>(c.real(), -c.imag()); }, host);
+    return host;
+}
+
+static void iterate_complex_mat(const std::function<void (std::complex<ComplexMat_::T> &)> &op, cv::Mat &host){
+    assert(host.channels() % 2 == 0);
+    for (int i = 0; i < host.rows; ++i) {
+        for (int j = 0; j < host.cols; ++j){
+            for (int k = 0; k < host.channels() / 2 ; ++k){
+                std::complex<float> cpxVal = host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k];
+                op(cpxVal);
+                host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k] = cpxVal;
+            }
+        }
+    }
+}
+
+
+
 };
 
 #endif /* MAT_UTIL_H */
