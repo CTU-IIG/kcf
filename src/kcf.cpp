@@ -112,9 +112,11 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
         model->model_alphaf_den = kf * (kf + p_lambda);
         
         
-//        cv::Mat kf_Test = cv::Mat(sz.height, sz.width, CV_32F);
-//        (*gaussian_correlation)(kf_Test, model->model_xf_Test, model->model_xf_Test, p_kernel_sigma, true, *this);
-//        DEBUG_PRINTM(kf_Test);
+        cv::Mat kf_Test = cv::Mat(sz.height, sz.width, CV_32FC2);
+        (*gaussian_correlation)(kf_Test, model->model_xf_Test, model->model_xf_Test, p_kernel_sigma, true, *this);
+        DEBUG_PRINTM(kf_Test);
+        model->model_alphaf_num_Test = MatUtil::mul_matn_matn(model->yf_Test, kf_Test);
+        model->model_alphaf_den_Test = MatUtil::mul_matn_matn(kf_Test, MatUtil::add_scalar(kf_Test, p_lambda));
     }
     model->model_alphaf = model->model_alphaf_num / model->model_alphaf_den;
     DEBUG_PRINTM(model->model_alphaf);

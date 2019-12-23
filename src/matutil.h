@@ -131,6 +131,11 @@ static cv::Mat mul_matn_matn(cv::Mat &host, cv::Mat &other){
     return host;
 }
 
+static cv::Mat add_scalar(cv::Mat &host, float &val){
+    mat_const_operator([&rhs](std::complex<float> &c) { c += rhs; }, host);
+    return host;
+}
+
 static void mat_const_operator(const std::function<void (std::complex<float> &)> &op, cv::Mat &host){
     assert(host.channels() % 2 == 0);
     for (int i = 0; i < host.rows; ++i) {
