@@ -820,7 +820,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(ComplexMat &result, const Comp
     TRACE("");
     DEBUG_PRINTM(xf);
     DEBUG_PRINT(xf_sqr_norm.num_elem);
-    xf.sqr_norm(xf_sqr_norm);
+    xf.sqr_norm(xf_sqr_norm);    
     for (uint s = 0; s < xf.n_scales; ++s)
         DEBUG_PRINT(xf_sqr_norm[s]);
     if (auto_correlation) {
@@ -850,6 +850,46 @@ void KCF_Tracker::GaussianCorrelation::operator()(ComplexMat &result, const Comp
     }
 
     kcf.fft.forward(ifft_res, result);
+}
+
+// REPLACEMENT
+void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, const cv::Mat &xf, const cv::Mat &yf,
+                                                  double sigma, bool auto_correlation, const KCF_Tracker &kcf)
+{
+    TRACE("");
+    DEBUG_PRINTM(xf);
+    DEBUG_PRINT(xf_sqr_norm_Test.total());
+    MatUtil::sqr_norm(xf_sqr_norm_Test);
+//    
+//    for (uint s = 0; s < xf.n_scales; ++s)
+//        DEBUG_PRINT(xf_sqr_norm[s]);
+//    if (auto_correlation) {
+//        yf_sqr_norm = xf_sqr_norm;
+//    } else {
+//        DEBUG_PRINTM(yf);
+//        yf.sqr_norm(yf_sqr_norm);
+//    }
+//    for (uint s = 0; s < yf.n_scales; ++s)
+//        DEBUG_PRINTM(yf_sqr_norm[s]);
+//    xyf = auto_correlation ? xf.sqr_mag() : xf * yf.conj(); // xf.muln(yf.conj());
+//    DEBUG_PRINTM(xyf);
+//
+//    // ifft2 and sum over 3rd dimension, we dont care about individual channels
+//    ComplexMat xyf_sum = xyf.sum_over_channels();
+//    DEBUG_PRINTM(xyf_sum);
+//    kcf.fft.inverse(xyf_sum, ifft_res);
+//    DEBUG_PRINTM(ifft_res);
+//
+//    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / xf.n_scales));
+//    for (uint i = 0; i < xf.n_scales; ++i) {
+//        cv::Mat plane = ifft_res.plane(i);
+//        DEBUG_PRINT(ifft_res.plane(i));
+//        cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm[i] + yf_sqr_norm[0] - 2 * ifft_res.plane(i))
+//                * numel_xf_inv, 0), plane);
+//        DEBUG_PRINTM(plane);
+//    }
+//
+//    kcf.fft.forward(ifft_res, result);
 }
 
 float get_response_circular(cv::Point2i &pt, cv::Mat &response)
