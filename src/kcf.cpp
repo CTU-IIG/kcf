@@ -882,10 +882,10 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
     DEBUG_PRINTM(xyf_Test);
 
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
-    ComplexMat xyf_sum = xyf.sum_over_channels();
+    cv::Mat xyf_sum = MatUtil::sum_over_channels(xyf_Test);
     DEBUG_PRINTM(xyf_sum);
-    kcf.fft.inverse(xyf_sum, ifft_res);
-    DEBUG_PRINTM(ifft_res);
+//    kcf.fft.inverse(xyf_sum, ifft_res_Test);
+//    DEBUG_PRINTM(ifft_res_Test);
 //
 //    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / xf.n_scales));
 //    for (uint i = 0; i < xf.n_scales; ++i) {

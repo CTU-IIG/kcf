@@ -6,78 +6,6 @@
 #include <opencv2/core/core.hpp>
 
 
-
-//------
-//same_size() only used in complexmat.cu , ignored
-//size() and channel() already implemented in cv::Mat
-//------
-
-
-//// This computes a float value using elements in individual channels (seems unused)
-//float sqr_norm(cv::Mat &host) const; 
-//
-//// This edits given Dynmem to contain computed float value in its [1] position (why?)
-//void sqr_norm(DynMem_<T> &result, cv::Mat &host) const;
-//
-//// Applies square operation to all elements in all channels
-//cv::Mat sqr_mag() const;
-//
-//// Applies "invert imaginary number" operation to all elements in all channels
-//cv::Mat conj() const;
-//
-//// DEFINE (=copy definition of) THIS BLOCK IN kcf.cpp 
-//cv::Mat sum_over_channels(cv::Mat &host) const;
-//
-////------
-//// to_cv_mat() and channel_to_cv_mat() unnecesary, since the data is already cv::Mat format
-////------
-//
-//
-//// DECIDE IF THIS IS ACTUALLY NEEDED WITH CURRENT cv::Mat FORMAT
-//// return a vector of 2 channels (real, imag) per one complex channel
-//std::vector<cv::Mat> to_cv_mat_vector() const
-//{
-//    std::vector<cv::Mat> result;
-//    result.reserve(n_channels);
-//
-//    for (uint i = 0; i < n_channels; ++i)
-//        result.push_back(channel_to_cv_mat(i));
-//
-//    return result;
-//}
-//
-//
-////------
-//// get_p_data() unnecessary
-//// mul() and operator functions implemented in cv::Mat
-////------
-//
-//// READY FOR TESTING
-//// convert 2 channel mat (real, imag) to vector row-by-row
-//std::vector<std::complex<float>> convert(const cv::Mat &mat)
-//{
-//    std::vector<std::complex<float>> result;
-//    result.reserve(mat.cols * mat.rows);
-//    for (int y = 0; y < mat.rows; ++y) {
-//        const float *row_ptr = mat.ptr<float>(y);
-//        for (int x = 0; x < 2 * mat.cols; x += 2) {
-//            result.push_back(std::complex<float>(row_ptr[x], row_ptr[x + 1]));
-//        }
-//    }
-//    return result;
-//}
-//
-//// DEFINE (=copy definition of) THIS BLOCK IN kcf.cpp
-//// [ possibly completely replaced by cv::Mat.forEach() ]
-//ComplexMat_ mat_mat_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
-//                             const ComplexMat_ &mat_rhs) const;
-//ComplexMat_ matn_mat1_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
-//                               const ComplexMat_ &mat_rhs) const;
-//ComplexMat_ matn_mat2_operator(void (*op)(std::complex<T> &c_lhs, const std::complex<T> &c_rhs),
-//                               const ComplexMat_ &mat_rhs) const;
-//ComplexMat_ mat_const_operator(const std::function<void(std::complex<T> &c_rhs)> &op) const;
-//   
-
 class MatUtil{
 public:
 /*
@@ -134,6 +62,25 @@ static void sqr_norm(const cv::Mat &host, std::vector<float> &result)
                 }        
         result.push_back(sum_sqr_norm / static_cast<float>(host.size[1] * host.size[2]));
     }
+}
+
+
+static cv::Mat sum_over_channels(cv::Mat &host)
+{
+    assert(host.channels() % 2 == 0);
+    
+    cv::Mat result(3, std::vector<int>({(int) host.size[0], host.size[1], host.size[2]}).data(), CV_32FC2);
+    for (int scale = 0; scale < host.size[0]; ++scale) {
+        for (int row = 0; row < host.size[1]; ++row)
+            for (int col = 0; col < host.size[2]; ++col){
+                std::complex<float> acc = 0;
+                for (int ch = 0; ch < host.channels() / 2; ++ch){
+                    acc += host.ptr<std::complex<float>>(scale,row)[(host.channels() / 2)*col + ch];
+                }
+                result.ptr<std::complex<float>>(scale,row)[col] = acc;
+            }
+    }
+    return result;
 }
 
 static cv::Mat sqr_mag(cv::Mat &host){
