@@ -116,7 +116,8 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
         (*gaussian_correlation)(kf_Test, model->model_xf_Test, model->model_xf_Test, p_kernel_sigma, true, *this);
         DEBUG_PRINTM(kf_Test);
         model->model_alphaf_num_Test = MatUtil::mul_matn_matn(model->yf_Test, kf_Test);
-        model->model_alphaf_den_Test = MatUtil::mul_matn_matn(kf_Test, MatUtil::add_scalar(kf_Test, p_lambda));
+        cv::Mat addedMat = MatUtil::add_scalar(kf_Test, p_lambda);
+        model->model_alphaf_den_Test = MatUtil::mul_matn_matn(kf_Test, addedMat);
     }
     model->model_alphaf = model->model_alphaf_num / model->model_alphaf_den;
     DEBUG_PRINTM(model->model_alphaf);
@@ -174,12 +175,16 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 //        }
 //    }
 //    
+//    cv::Mat test = cv::Mat(3, std::vector<int>({2, 2, 2}).data(), CV_32FC2, float(5));
+//    test.ptr<float>(0)[0] = float(1);
+//    test.ptr<float>(1)[0] = float(1);
+//    test.ptr<float>(1,1)[0] = float(1);
 //    
 //    DEBUG_PRINTM(test);
 //    
 //    
 //    return;
-//    
+    
     // check boundary, enforce min size
     double x1 = bbox.x, x2 = bbox.x + bbox.width, y1 = bbox.y, y2 = bbox.y + bbox.height;
     if (x1 < 0) x1 = 0.;
@@ -853,32 +858,34 @@ void KCF_Tracker::GaussianCorrelation::operator()(ComplexMat &result, const Comp
 }
 
 // REPLACEMENT
-void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, const cv::Mat &xf, const cv::Mat &yf,
+void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, cv::Mat &yf,
                                                   double sigma, bool auto_correlation, const KCF_Tracker &kcf)
 {
     TRACE("");
     DEBUG_PRINTM(xf);
-    DEBUG_PRINT(xf_sqr_norm_Test.total());
-    MatUtil::sqr_norm(xf_sqr_norm_Test);
-//    
-//    for (uint s = 0; s < xf.n_scales; ++s)
-//        DEBUG_PRINT(xf_sqr_norm[s]);
-//    if (auto_correlation) {
-//        yf_sqr_norm = xf_sqr_norm;
-//    } else {
-//        DEBUG_PRINTM(yf);
-//        yf.sqr_norm(yf_sqr_norm);
-//    }
-//    for (uint s = 0; s < yf.n_scales; ++s)
-//        DEBUG_PRINTM(yf_sqr_norm[s]);
-//    xyf = auto_correlation ? xf.sqr_mag() : xf * yf.conj(); // xf.muln(yf.conj());
-//    DEBUG_PRINTM(xyf);
-//
-//    // ifft2 and sum over 3rd dimension, we dont care about individual channels
-//    ComplexMat xyf_sum = xyf.sum_over_channels();
-//    DEBUG_PRINTM(xyf_sum);
-//    kcf.fft.inverse(xyf_sum, ifft_res);
-//    DEBUG_PRINTM(ifft_res);
+    DEBUG_PRINT(xf_sqr_norm_Test.size());
+    MatUtil::sqr_norm(xf, xf_sqr_norm_Test);
+    
+    for (uint s = 0; s < xf_sqr_norm_Test.size(); ++s)
+        DEBUG_PRINT(xf_sqr_norm_Test.at(s));
+    if (auto_correlation) {
+        yf_sqr_norm_Test = xf_sqr_norm_Test;
+    } else {
+        DEBUG_PRINTM(yf);
+        MatUtil::sqr_norm(yf, yf_sqr_norm_Test);
+    }
+    for (uint s = 0; s < yf_sqr_norm_Test.size(); ++s)
+        DEBUG_PRINTM(yf_sqr_norm_Test.at(s));
+    
+    cv::Mat conjMat = MatUtil::conj(yf);   
+    xyf_Test = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
+    DEBUG_PRINTM(xyf_Test);
+
+    // ifft2 and sum over 3rd dimension, we dont care about individual channels
+    ComplexMat xyf_sum = xyf.sum_over_channels();
+    DEBUG_PRINTM(xyf_sum);
+    kcf.fft.inverse(xyf_sum, ifft_res);
+    DEBUG_PRINTM(ifft_res);
 //
 //    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / xf.n_scales));
 //    for (uint i = 0; i < xf.n_scales; ++i) {

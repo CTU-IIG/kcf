@@ -184,7 +184,7 @@ private:
                 k_Test = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
             }
         void operator()(ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
-        void operator()(cv::Mat &result, const cv::Mat &xf, const cv::Mat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
+        void operator()(cv::Mat &result, cv::Mat &xf, cv::Mat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
 
       private:
         DynMem xf_sqr_norm;

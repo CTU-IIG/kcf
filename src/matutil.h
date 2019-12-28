@@ -134,7 +134,11 @@ static void sqr_norm(const cv::Mat &host, std::vector<float> &result)
                 }        
         result.push_back(sum_sqr_norm / static_cast<float>(host.size[1] * host.size[2]));
     }
-    return;
+}
+
+static cv::Mat sqr_mag(cv::Mat &host){
+    mat_const_operator([](std::complex<float> &c) { c = c.real() * c.real() + c.imag() * c.imag(); }, host);
+    return host;
 }
 
 static cv::Mat conj(cv::Mat &host){
