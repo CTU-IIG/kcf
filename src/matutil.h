@@ -20,6 +20,18 @@ static cv::Mat plane(uint scale, uint feature, cv::Mat &host) {
 }
 
 /*
+ * Function for getting cv::Mat header referencing height and width of the input matrix.
+ * Presumes input matrix of 3 dimensions with format: {scales, height, width}
+ * 
+ * This will probably replace MatUtil::plane()
+ **/
+static cv::Mat plane3(uint scale, cv::Mat &host) {
+    assert(host.dims == 3);
+    assert(int(scale) < host.size[0]);
+    return cv::Mat(host.size[1], host.size[2], host.type(), host.ptr(scale));
+}
+
+/*
  * Function for getting cv::Mat header referencing features, height and width of the input matrix.
  * Presumes input matrix of 4 dimensions with format: {scales, features, height, width}
  **/
