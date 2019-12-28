@@ -101,7 +101,6 @@ static cv::Mat scale(uint scale, cv::Mat &host) {
     return cv::Mat(3, std::vector<int>({host.size[1], host.size[2], host.size[3]}).data(), host.type(), host.ptr(scale));
 }
    
-
 /*
  * Sets channel number idxFrom of the source as channel number idxTo of target matrix.
  * Uses native format of cv::Mat to store channels, meaning all channel values of each pixel
@@ -114,6 +113,28 @@ static void set_channel(int idxFrom, int idxTo, cv::Mat &source, cv::Mat &target
     assert(idxFrom < source.channels());
     int from_to[] = { idxFrom,idxTo };
     cv::mixChannels( &source, 1, &target, 1, from_to, 1 );
+}
+
+/*
+ * Computes sum of results from formula ((real)^2 + (imag)^2) 
+ * for every complex element in a scale of the matrix.
+ * This is repeated for every scale, and the results are appended into result vector.
+**/ 
+static void sqr_norm(const cv::Mat &host, std::vector<float> &result)
+{
+    assert(host.channels() % 2 == 0);
+    for (int scale = 0; scale < host.size[0]; ++scale) {
+        float sum_sqr_norm = 0;
+        
+        for (int row = 0; row < host.size[1]; ++row)
+            for (int col = 0; col < host.size[2]; ++col)
+                for (int ch = 0; ch < host.channels() / 2; ++ch){
+                    std::complex<float> cpxVal = host.ptr<std::complex<float>>(scale,row)[(host.channels() / 2)*col + ch];
+                    sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
+                }        
+        result.push_back(sum_sqr_norm / static_cast<float>(host.size[1] * host.size[2]));
+    }
+    return;
 }
 
 static cv::Mat conj(cv::Mat &host){
@@ -131,8 +152,8 @@ static cv::Mat mul_matn_matn(cv::Mat &host, cv::Mat &other){
     return host;
 }
 
-static cv::Mat add_scalar(cv::Mat &host, float &val){
-    mat_const_operator([&rhs](std::complex<float> &c) { c += rhs; }, host);
+static cv::Mat add_scalar(cv::Mat &host, const float &val){
+    mat_const_operator([&val](std::complex<float> &c) { c += val; }, host);
     return host;
 }
 
