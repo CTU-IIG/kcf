@@ -175,8 +175,16 @@ private:
             , xyf(Fft::freq_size(size), num_feats, num_scales)
             , ifft_res(num_scales, size)
             , k(num_scales, size)
-        {}
+        {
+                xf_sqr_norm_Test.reserve(num_scales);
+                yf_sqr_norm_Test.reserve(1);
+                cv::Size temp = Fft::freq_size(size);
+                xyf_Test = cv::Mat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
+                ifft_res_Test = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
+                k_Test = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
+            }
         void operator()(ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
+        void operator()(cv::Mat &result, const cv::Mat &xf, const cv::Mat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
 
       private:
         DynMem xf_sqr_norm;
@@ -184,6 +192,12 @@ private:
         ComplexMat xyf;
         MatScales ifft_res;
         MatScales k;
+        
+        std::vector<float> xf_sqr_norm_Test = std::vector<float>();
+        std::vector<float> yf_sqr_norm_Test = std::vector<float>();
+        cv::Mat xyf_Test;
+        cv::Mat ifft_res_Test;
+        cv::Mat k_Test;
     };
 
     //helping functions
