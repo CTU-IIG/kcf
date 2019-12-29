@@ -82,18 +82,15 @@ static void sqr_norm(const cv::Mat &host, float &result)
 static cv::Mat sum_over_channels(cv::Mat &host)
 {
     assert(host.channels() % 2 == 0);
-    
-    cv::Mat result(3, std::vector<int>({(int) host.size[0], host.size[1], host.size[2]}).data(), CV_32FC2);
-    for (int scale = 0; scale < host.size[0]; ++scale) {
-        for (int row = 0; row < host.size[1]; ++row)
-            for (int col = 0; col < host.size[2]; ++col){
-                std::complex<float> acc = 0;
-                for (int ch = 0; ch < host.channels() / 2; ++ch){
-                    acc += host.ptr<std::complex<float>>(scale,row)[(host.channels() / 2)*col + ch];
-                }
-                result.ptr<std::complex<float>>(scale,row)[col] = acc;
+    cv::Mat result(host.rows, host.cols, CV_32FC2);
+    for (int row = 0; row < host.rows; ++row)
+        for (int col = 0; col < host.cols; ++col){
+            std::complex<float> acc = 0;
+            for (int ch = 0; ch < host.channels() / 2; ++ch){
+                acc += host.ptr<std::complex<float>>(row)[(host.channels() / 2)*col + ch];
             }
-    }
+            result.ptr<std::complex<float>>(row)[col] = acc;
+        }
     return result;
 }
 
