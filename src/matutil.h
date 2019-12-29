@@ -4,7 +4,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
-
+#include "debug.h"
 
 class MatUtil{
 public:
@@ -57,23 +57,21 @@ static void set_channel(int idxFrom, int idxTo, cv::Mat &source, cv::Mat &target
 
 /*
  * Computes sum of results from formula ((real)^2 + (imag)^2) 
- * for every complex element in a scale of the matrix.
+ * for every complex element of the input matrix.
  * This is repeated for every scale, and the results are appended into result vector.
 **/ 
-static void sqr_norm(const cv::Mat &host, std::vector<float> &result)
+static void sqr_norm(const cv::Mat &host, float &result)
 {
     assert(host.channels() % 2 == 0);
-    for (int scale = 0; scale < host.size[0]; ++scale) {
-        float sum_sqr_norm = 0;
-        
-        for (int row = 0; row < host.size[1]; ++row)
-            for (int col = 0; col < host.size[2]; ++col)
-                for (int ch = 0; ch < host.channels() / 2; ++ch){
-                    std::complex<float> cpxVal = host.ptr<std::complex<float>>(scale,row)[(host.channels() / 2)*col + ch];
-                    sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
-                }        
-        result.push_back(sum_sqr_norm / static_cast<float>(host.size[1] * host.size[2]));
-    }
+    float sum_sqr_norm = 0;
+
+    for (int row = 0; row < host.rows; ++row)
+        for (int col = 0; col < host.cols; ++col)
+            for (int ch = 0; ch < host.channels() / 2; ++ch){
+                std::complex<float> cpxVal = host.ptr<std::complex<float>>(row)[(host.channels() / 2)*col + ch];
+                sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
+            }
+    result = sum_sqr_norm / static_cast<float>(host.rows * host.cols);
 }
 
 /*

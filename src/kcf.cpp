@@ -874,19 +874,16 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
 {
     TRACE("");
     DEBUG_PRINTM(xf);
-    DEBUG_PRINT(xf_sqr_norm_Test.size());
     MatUtil::sqr_norm(xf, xf_sqr_norm_Test);
+    DEBUG_PRINT(xf_sqr_norm_Test);
     
-    for (uint s = 0; s < xf_sqr_norm_Test.size(); ++s)
-        DEBUG_PRINT(xf_sqr_norm_Test.at(s));
     if (auto_correlation) {
         yf_sqr_norm_Test = xf_sqr_norm_Test;
     } else {
         DEBUG_PRINTM(yf);
         MatUtil::sqr_norm(yf, yf_sqr_norm_Test);
     }
-    for (uint s = 0; s < yf_sqr_norm_Test.size(); ++s)
-        DEBUG_PRINTM(yf_sqr_norm_Test.at(s));
+    DEBUG_PRINT(yf_sqr_norm_Test);
     
     cv::Mat conjMat = MatUtil::conj(yf);   
     xyf_Test = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
@@ -898,16 +895,16 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
     kcf.fft.inverse(xyf_sum, ifft_res_Test);
     DEBUG_PRINTM(ifft_res_Test);
 
-    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
-//    for (uint i = 0; i < xf.n_scales; ++i) {
-        cv::Mat plane = MatUtil::plane(0,ifft_res_Test);
-        DEBUG_PRINTM(plane);
-        cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm[0] + yf_sqr_norm[0] - 2 * MatUtil::plane(0,ifft_res_Test))
-                * numel_xf_inv, 0), plane);
-        DEBUG_PRINTM(plane);
-//    }
-
-    kcf.fft.forward(ifft_res_Test, result);
+//    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
+////    for (uint i = 0; i < xf.n_scales; ++i) {
+//        cv::Mat plane = MatUtil::plane(0,ifft_res_Test);
+//        DEBUG_PRINTM(plane);
+//        cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm[0] + yf_sqr_norm[0] - 2 * MatUtil::plane(0,ifft_res_Test))
+//                * numel_xf_inv, 0), plane);
+//        DEBUG_PRINTM(plane);
+////    }
+//
+//    kcf.fft.forward(ifft_res_Test, result);
 }
 
 float get_response_circular(cv::Point2i &pt, cv::Mat &response)

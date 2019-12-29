@@ -176,8 +176,6 @@ private:
             , ifft_res(num_scales, size)
             , k(num_scales, size)
         {
-                xf_sqr_norm_Test.reserve(num_scales);
-                yf_sqr_norm_Test.reserve(1);
                 cv::Size temp = Fft::freq_size(size);
                 xyf_Test = cv::Mat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
                 ifft_res_Test = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
@@ -193,8 +191,8 @@ private:
         MatScales ifft_res;
         MatScales k;
         
-        std::vector<float> xf_sqr_norm_Test = std::vector<float>();
-        std::vector<float> yf_sqr_norm_Test = std::vector<float>();
+        float xf_sqr_norm_Test;
+        float yf_sqr_norm_Test;
         cv::Mat xyf_Test;
         cv::Mat ifft_res_Test;
         cv::Mat k_Test;
