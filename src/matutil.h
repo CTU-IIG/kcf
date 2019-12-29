@@ -60,18 +60,21 @@ static void set_channel(int idxFrom, int idxTo, cv::Mat &source, cv::Mat &target
  * for every complex element of the input matrix.
  * This is repeated for every scale, and the results are appended into result vector.
 **/ 
-static void sqr_norm(const cv::Mat &host, float &result)
+static float sqr_norm(const cv::Mat &host)
 {
     assert(host.channels() % 2 == 0);
     float sum_sqr_norm = 0;
 
-    for (int row = 0; row < host.rows; ++row)
-        for (int col = 0; col < host.cols; ++col)
+    for (int row = 0; row < host.rows; ++row){
+        for (int col = 0; col < host.cols; ++col){
             for (int ch = 0; ch < host.channels() / 2; ++ch){
                 std::complex<float> cpxVal = host.ptr<std::complex<float>>(row)[(host.channels() / 2)*col + ch];
                 sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
             }
-    result = sum_sqr_norm / static_cast<float>(host.rows * host.cols);
+        }
+    }
+    sum_sqr_norm = sum_sqr_norm / static_cast<float>(host.rows * host.cols);
+    return sum_sqr_norm;
 }
 
 /*
