@@ -25,7 +25,7 @@ static cv::Mat plane(uint scale, uint feature, cv::Mat &host) {
  * 
  * This will probably replace MatUtil::plane()
  **/
-static cv::Mat plane3(uint dim0, cv::Mat &host) {
+static cv::Mat plane(uint dim0, cv::Mat &host) {
     assert(host.dims == 3);
     assert(int(dim0) < host.size[0]);
     return cv::Mat(host.size[1], host.size[2], host.type(), host.ptr(dim0));
