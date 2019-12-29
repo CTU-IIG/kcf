@@ -76,7 +76,11 @@ static void sqr_norm(const cv::Mat &host, std::vector<float> &result)
     }
 }
 
-
+/*
+ * Sum of channel values for each point of input matrix 
+ * becomes a new point in the new matrix.
+ * Scales are saved separately in first dimension of new matrix.
+**/
 static cv::Mat sum_over_channels(cv::Mat &host)
 {
     assert(host.channels() % 2 == 0);
@@ -94,6 +98,20 @@ static cv::Mat sum_over_channels(cv::Mat &host)
     }
     return result;
 }
+
+/*
+ * Extracts two channels from input, and sets them as data of resulting new matrix.
+ * Presumes format where two neighbouring channels of input make one complex value.
+**/
+static cv::Mat channel_to_cv_mat(int channel_id, cv::Mat &host){
+    cv::Mat result(host.rows, host.cols, CV_32FC2);
+    int from_to[] = { channel_id, 0 };
+    cv::mixChannels(&host,1,&result,1,from_to,1);
+    int from_to2[] = { (channel_id + 1), 1 };
+    cv::mixChannels(&host,1,&result,1,from_to2,1);
+    return result;
+}
+
 
 static cv::Mat sqr_mag(cv::Mat &host){
     mat_const_operator([](std::complex<float> &c) { c = c.real() * c.real() + c.imag() * c.imag(); }, host);
