@@ -900,13 +900,13 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
 
     float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
 //    for (uint i = 0; i < xf.n_scales; ++i) {
-//        cv::Mat plane = ifft_res.plane(i);
-//        DEBUG_PRINT(ifft_res.plane(i));
-//        cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm[i] + yf_sqr_norm[0] - 2 * ifft_res.plane(i))
-//                * numel_xf_inv, 0), plane);
-//        DEBUG_PRINTM(plane);
+        cv::Mat plane = MatUtil::plane(0,ifft_res_Test);
+        DEBUG_PRINTM(plane);
+        cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm[0] + yf_sqr_norm[0] - 2 * MatUtil::plane(0,ifft_res_Test))
+                * numel_xf_inv, 0), plane);
+        DEBUG_PRINTM(plane);
 //    }
-//
+
     kcf.fft.forward(ifft_res_Test, result);
 }
 
