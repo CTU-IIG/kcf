@@ -17,6 +17,7 @@ public:
     void forward_window(cv::Mat &feat, cv::Mat &complex_result, cv::Mat &temp);
     
     void inverse(ComplexMat &complex_input, MatScales &real_result);
+    void inverse(cv::Mat &complex_input, cv::Mat &real_result);
     ~FftOpencv();
 private:
     cv::Mat m_window;

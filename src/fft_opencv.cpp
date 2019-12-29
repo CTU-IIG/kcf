@@ -72,4 +72,18 @@ void FftOpencv::inverse(ComplexMat &  complex_input, MatScales & real_result)
     }
 }
 
+// REPLACEMENT
+void FftOpencv::inverse(cv::Mat &complex_input, cv::Mat &real_result)
+{
+    //Fft::inverse(complex_input, real_result);
+
+    assert(complex_input.channels() % 2 == 0);
+    cv::Mat source = MatUtil::plane(0, complex_input);  // seems like only first dimension is relevant
+    for (uint i = 0; i < uint(source.channels() / 2); ++i) {
+        cv::Mat inputChannel = MatUtil::channel_to_cv_mat(i*2, source); // extract channel matrix
+        cv::Mat target = MatUtil::plane(i, real_result);                // select output plane
+        cv::dft(inputChannel, target, cv::DFT_INVERSE | cv::DFT_REAL_OUTPUT | cv::DFT_SCALE);
+    }
+}
+
 FftOpencv::~FftOpencv() {}

@@ -138,10 +138,10 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     __dbgTracer.debug = m_debug;
     TRACE("");
 
-//    cv::Mat test = cv::Mat(2,2,CV_32FC4,float(0));
-////    cv::Mat test2 = cv::Mat(3,2,CV_32F,float(6));
-////    int from_to[] = { 0,3 };
-////    cv::mixChannels(&test2,1,&test,1,from_to,1);
+//    //cv::Mat test = cv::Mat(2,2,CV_32FC4,float(1));
+//    cv::Mat test = cv::Mat(3, std::vector<int>({2, 2, 2}).data(), CV_32FC2, float(5));
+//    cv::Mat testPl = cv::Mat(test.size[1], test.size[2], test.type(), test.ptr<float>(0));
+//    cv::Mat test2 = cv::Mat(2,2,CV_32FC2,float(6));
 //    
 ////    cv::Mat_<std::complex<float>> testComplex = cv::Mat_<std::complex<float>>(test2);
 //    
@@ -161,6 +161,17 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 //    test.ptr<float>(1)[5] = float(14);
 //    test.ptr<float>(1)[6] = float(15);
 //    test.ptr<float>(1)[7] = float(16);
+//    DEBUG_PRINTM(test);
+//    DEBUG_PRINTM(testPl);
+//    DEBUG_PRINTM(test2);
+//    
+//    int from_to[] = { 0,0 };
+//    cv::mixChannels(&testPl,1,&test2,1,from_to,1);
+//    int from_to2[] = { 1,1 };
+//    cv::mixChannels(&testPl,1,&test2,1,from_to2,1);
+//    
+//    DEBUG_PRINTM(test2);
+//    return;
 //    
 //    
 //    assert(test.channels() % 2 == 0);
@@ -884,10 +895,10 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
     cv::Mat xyf_sum = MatUtil::sum_over_channels(xyf_Test);
     DEBUG_PRINTM(xyf_sum);
-//    kcf.fft.inverse(xyf_sum, ifft_res_Test);
-//    DEBUG_PRINTM(ifft_res_Test);
-//
-//    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / xf.n_scales));
+    kcf.fft.inverse(xyf_sum, ifft_res_Test);
+    DEBUG_PRINTM(ifft_res_Test);
+
+    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
 //    for (uint i = 0; i < xf.n_scales; ++i) {
 //        cv::Mat plane = ifft_res.plane(i);
 //        DEBUG_PRINT(ifft_res.plane(i));
@@ -896,7 +907,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
 //        DEBUG_PRINTM(plane);
 //    }
 //
-//    kcf.fft.forward(ifft_res, result);
+    kcf.fft.forward(ifft_res_Test, result);
 }
 
 float get_response_circular(cv::Point2i &pt, cv::Mat &response)
