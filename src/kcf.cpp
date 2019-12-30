@@ -120,7 +120,9 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
         model->model_alphaf_den_Test = MatUtil::mul_matn_matn(kf_Test, addedMat);
     }
     model->model_alphaf = model->model_alphaf_num / model->model_alphaf_den;
+    model->model_alphaf_Test = MatUtil::divide_matn_matn(model->model_alphaf_num_Test, model->model_alphaf_den_Test);
     DEBUG_PRINTM(model->model_alphaf);
+    DEBUG_PRINTM(model->model_alphaf_Test);
     //        p_model_alphaf = p_yf / (kf + p_lambda);   //equation for fast training
 }
 
