@@ -131,6 +131,10 @@ static cv::Mat add_scalar(cv::Mat &host, const float &val){
     return mat_const_operator([&val](std::complex<float> &c) { c += val; }, host);
 }
 
+static cv::Mat divide_matn_matn(cv::Mat &host, cv::Mat &other){
+    return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs /= c_rhs; }, host, other);
+}
+
 static cv::Mat mat_const_operator(const std::function<void (std::complex<float> &)> &op, cv::Mat &host){
     assert(host.channels() % 2 == 0);
     cv::Mat result = host.clone();
