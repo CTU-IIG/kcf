@@ -95,9 +95,9 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
     DEBUG_PRINTM(model->model_xf_Test);
     
     if (m_use_linearkernel) {
-        ComplexMat xfconj = model->xf.conj();
-        model->model_alphaf_num = xfconj.mul(model->yf);
-        model->model_alphaf_den = (model->xf * xfconj);
+//        ComplexMat xfconj = model->xf.conj();
+//        model->model_alphaf_num = xfconj.mul(model->yf);
+//        model->model_alphaf_den = (model->xf * xfconj);
         
         cv::Mat xfconj_Test = MatUtil::conj(model->xf_Test);
         model->model_alphaf_num_Test = MatUtil::mul_matn_mat1(xfconj_Test, model->yf_Test);
