@@ -112,77 +112,78 @@ static cv::Mat channel_to_cv_mat(int channel_id, cv::Mat &host){
 
 
 static cv::Mat sqr_mag(cv::Mat &host){
-    mat_const_operator([](std::complex<float> &c) { c = c.real() * c.real() + c.imag() * c.imag(); }, host);
-    return host;
+    return mat_const_operator([](std::complex<float> &c) { c = c.real() * c.real() + c.imag() * c.imag(); }, host);
 }
 
 static cv::Mat conj(cv::Mat &host){
-    mat_const_operator([](std::complex<float> &c) { c = std::complex<float>(c.real(), -c.imag()); }, host);
-    return host;
+    return mat_const_operator([](std::complex<float> &c) { c = std::complex<float>(c.real(), -c.imag()); }, host);
 }
 
 static cv::Mat mul_matn_mat1(cv::Mat &host, cv::Mat &other){
-    matn_mat1_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
-    return host;
+    return matn_mat1_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
 }
 
 static cv::Mat mul_matn_matn(cv::Mat &host, cv::Mat &other){
-    mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
-    return host;
+    return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
 }
 
 static cv::Mat add_scalar(cv::Mat &host, const float &val){
-    mat_const_operator([&val](std::complex<float> &c) { c += val; }, host);
-    return host;
+    return mat_const_operator([&val](std::complex<float> &c) { c += val; }, host);
 }
 
-static void mat_const_operator(const std::function<void (std::complex<float> &)> &op, cv::Mat &host){
+static cv::Mat mat_const_operator(const std::function<void (std::complex<float> &)> &op, cv::Mat &host){
     assert(host.channels() % 2 == 0);
-    for (int i = 0; i < host.rows; ++i) {
-        for (int j = 0; j < host.cols; ++j){
-            for (int k = 0; k < host.channels() / 2 ; ++k){
-                std::complex<float> cpxVal = host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k];
+    cv::Mat result = host.clone();
+    for (int i = 0; i < result.rows; ++i) {
+        for (int j = 0; j < result.cols; ++j){
+            for (int k = 0; k < result.channels() / 2 ; ++k){
+                std::complex<float> cpxVal = result.ptr<std::complex<float>>(i)[(result.channels() / 2)*j + k];
                 op(cpxVal);
-                host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k] = cpxVal;
+                result.ptr<std::complex<float>>(i)[(result.channels() / 2)*j + k] = cpxVal;
             }
         }
     }
+    return result;
 }
 
-static void matn_mat1_operator(void (*op)(std::complex<float> &, const std::complex<float> &), cv::Mat &host, cv::Mat &other){
+static cv::Mat matn_mat1_operator(void (*op)(std::complex<float> &, const std::complex<float> &), cv::Mat &host, cv::Mat &other){
     assert(host.channels() % 2 == 0);
     assert(other.channels() == 2);
     assert(other.cols == host.cols);
     assert(other.rows == host.rows);
     
-    for (int i = 0; i < host.rows; ++i) {
-        for (int j = 0; j < host.cols; ++j){
-            std::complex<float> cpxValOther = other.ptr<std::complex<float>>(i)[j];
-            for (int k = 0; k < host.channels() / 2 ; ++k){
-                std::complex<float> cpxValHost = host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k];
+    cv::Mat result = host.clone();
+    for (int i = 0; i < result.rows; ++i) {
+        for (int j = 0; j < result.cols; ++j){
+            for (int k = 0; k < result.channels() / 2 ; ++k){
+                std::complex<float> cpxValOther = other.ptr<std::complex<float>>(i)[j];
+                std::complex<float> cpxValHost = result.ptr<std::complex<float>>(i)[(result.channels() / 2)*j + k];
                 op(cpxValHost, cpxValOther);
-                host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k] = cpxValHost;
+                result.ptr<std::complex<float>>(i)[(result.channels() / 2)*j + k] = cpxValHost;
             }
         }
     }
+    return result;
 }
 
-static void mat_mat_operator(void (*op)(std::complex<float> &, const std::complex<float> &), cv::Mat &host, cv::Mat &other){
+static cv::Mat mat_mat_operator(void (*op)(std::complex<float> &, const std::complex<float> &), cv::Mat &host, cv::Mat &other){
     assert(host.channels() % 2 == 0);
     assert(other.channels() == host.channels());
     assert(other.cols == host.cols);
     assert(other.rows == host.rows);
     
-    for (int i = 0; i < host.rows; ++i) {
-        for (int j = 0; j < host.cols; ++j){
-            for (int k = 0; k < host.channels() / 2 ; ++k){
-                std::complex<float> cpxValHost = host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k];
+    cv::Mat result = host.clone();
+    for (int i = 0; i < result.rows; ++i) {
+        for (int j = 0; j < result.cols; ++j){
+            for (int k = 0; k < result.channels() / 2 ; ++k){
+                std::complex<float> cpxValHost = result.ptr<std::complex<float>>(i)[(result.channels() / 2)*j + k];
                 std::complex<float> cpxValOther = other.ptr<std::complex<float>>(i)[(other.channels() / 2)*j + k];
                 op(cpxValHost, cpxValOther);
-                host.ptr<std::complex<float>>(i)[(host.channels() / 2)*j + k] = cpxValHost;
+                result.ptr<std::complex<float>>(i)[(result.channels() / 2)*j + k] = cpxValHost;
             }
         }
     }
+    return result;
 }
 
 
