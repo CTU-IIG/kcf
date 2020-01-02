@@ -97,14 +97,14 @@ void Fftw::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 {
 //    Fft::forward(real_input, complex_result);
 //
-//    if (real_input.size[0] == 1)
+    if (real_input.dims == 2)
         fftwf_execute_dft_r2c(plan_f, reinterpret_cast<float *>(real_input.data),
                               reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>(0)));
-//#ifdef BIG_BATCH
-//    else
-//        fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
-//                              reinterpret_cast<fftwf_complex *>(complex_result.get_p_data()));
-//#endif
+#ifdef BIG_BATCH
+    else
+        fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
+                              reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>(0)));
+#endif
 }
 
 void Fftw::forward_window(MatScaleFeats  &feat, ComplexMat & complex_result, MatScaleFeats &temp)
@@ -147,12 +147,12 @@ void Fftw::forward_window(cv::Mat &feat, cv::Mat & complex_result, cv::Mat &temp
     float *in = temp.ptr<float>();
     fftwf_complex *out = reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>(0));
 
-//    if (n_scales == 1)
+    if (feat.size[0] == 1)
         fftwf_execute_dft_r2c(plan_fw, in, out);
-//#ifdef BIG_BATCH
-//    else
-//        fftwf_execute_dft_r2c(plan_fw_all_scales, in, out);
-//#endif
+#ifdef BIG_BATCH
+    else
+        fftwf_execute_dft_r2c(plan_fw_all_scales, in, out);
+#endif
 }
 
 
@@ -177,17 +177,16 @@ void Fftw::inverse(ComplexMat &complex_input, MatScales &real_result)
 void Fftw::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {
 //    Fft::inverse(complex_input, real_result);
-//
-//    int n_channels = complex_input.n_channels;
+
     fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>(0));
     float *out = real_result.ptr<float>();
 
-//    if (n_channels == 1)
+    if (complex_input.channels() == 2)
         fftwf_execute_dft_c2r(plan_i_1ch, in, out);
-//#ifdef BIG_BATCH
-//    else
-//        fftwf_execute_dft_c2r(plan_i_all_scales, in, out);
-//#endif
+#ifdef BIG_BATCH
+    else
+        fftwf_execute_dft_c2r(plan_i_all_scales, in, out);
+#endif
     real_result *= 1.0 / (m_width * m_height);
 }
 
