@@ -99,11 +99,11 @@ void Fftw::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 //
     if (real_input.dims == 2)
         fftwf_execute_dft_r2c(plan_f, reinterpret_cast<float *>(real_input.data),
-                              reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>(0)));
+                              reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>>(0)));
 #ifdef BIG_BATCH
     else
         fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
-                              reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>(0)));
+                              reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>>(0)));
 #endif
 }
 
@@ -145,7 +145,7 @@ void Fftw::forward_window(cv::Mat &feat, cv::Mat & complex_result, cv::Mat &temp
     }
     
     float *in = temp.ptr<float>();
-    fftwf_complex *out = reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>(0));
+    fftwf_complex *out = reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>>(0));
 
     if (feat.size[0] == 1)
         fftwf_execute_dft_r2c(plan_fw, in, out);
@@ -178,7 +178,7 @@ void Fftw::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {
 //    Fft::inverse(complex_input, real_result);
 
-    fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>(0));
+    fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>>(0));
     float *out = real_result.ptr<float>();
 
     if (complex_input.channels() == 2)
