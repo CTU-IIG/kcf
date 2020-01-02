@@ -75,6 +75,8 @@ void cuFFT::forward(const MatScales &real_input, ComplexMat &complex_result)
 // REPLACEMENT
 void cuFFT::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 {
+    (void)real_input;
+    (void)complex_result;
 //    Fft::forward(real_input, complex_result);
 //    auto in = static_cast<cufftReal *>(const_cast<MatScales&>(real_input).deviceMem());
 //
@@ -112,6 +114,9 @@ void cuFFT::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatS
 // REPLACEMENT
 void cuFFT::forward_window(cv::Mat &feat, cv::Mat &complex_result, cv::Mat &temp)
 {
+    (void)feat;
+    (void)complex_result;
+    (void)temp;
 //    Fft::forward_window(feat, complex_result, temp);
 //
 //    cufftReal *temp_data = temp.deviceMem();
@@ -157,6 +162,8 @@ void cuFFT::inverse(ComplexMat &complex_input, MatScales &real_result)
 // REPLACEMENT
 void cuFFT::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {
+    (void)complex_input;
+    (void)real_result;
 //    Fft::inverse(complex_input, real_result);
 //
 //    uint n_channels = complex_input.n_channels;
