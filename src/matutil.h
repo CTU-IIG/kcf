@@ -58,7 +58,6 @@ static void set_channel(int idxFrom, int idxTo, cv::Mat &source, cv::Mat &target
 /*
  * Computes sum of results from formula ((real)^2 + (imag)^2) 
  * for every complex element of the input matrix.
- * This is repeated for every scale, and the results are appended into result vector.
 **/ 
 static float sqr_norm(const cv::Mat &host)
 {
