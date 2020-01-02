@@ -148,12 +148,12 @@ private:
         
         // FORMER ATTRIBUTES CONVERTED TO cv::Mat
         // Complex matrix now equals 2*k channels matrix by design
-        cv::Mat yf_Test {(int) height, (int) width, CV_32FC2};
-        cv::Mat model_alphaf_Test {(int) height, (int) width, CV_32FC2};
-        cv::Mat model_alphaf_num_Test {(int) height, (int) width, CV_32FC2};
-        cv::Mat model_alphaf_den_Test {(int) height, (int) width, CV_32FC2};
-        cv::Mat model_xf_Test {(int) height, (int) width, CV_32FC(n_feats*2)};
-        cv::Mat xf_Test {(int) height, (int) width, CV_32FC(n_feats*2)};
+        cv::Mat yf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
+        cv::Mat model_alphaf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
+        cv::Mat model_alphaf_num_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
+        cv::Mat model_alphaf_den_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
+        cv::Mat model_xf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
+        cv::Mat xf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
 
         cv::Mat patch_feats_Test{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
         cv::Mat temp_Test{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
