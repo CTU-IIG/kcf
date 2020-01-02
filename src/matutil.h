@@ -80,7 +80,6 @@ static float sqr_norm(const cv::Mat &host)
 /*
  * Sum of channel values for each point of input matrix 
  * becomes a new point in the new matrix.
- * Scales are saved separately in first dimension of new matrix.
 **/
 static cv::Mat sum_over_channels(cv::Mat &host)
 {
