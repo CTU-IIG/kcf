@@ -178,7 +178,7 @@ void Fftw::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {
 //    Fft::inverse(complex_input, real_result);
 
-    fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>>(0));
+    fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_input.ptr<std::complex<float>>(0));
     float *out = real_result.ptr<float>();
 
     if (complex_input.channels() == 2)
