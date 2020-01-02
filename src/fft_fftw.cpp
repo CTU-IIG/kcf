@@ -92,7 +92,7 @@ void Fftw::forward(const MatScales &real_input, ComplexMat &complex_result)
 }
 
 // REPLACEMENT
-void Fftw::forward(cv::Mat &real_input, cv::Mat &complex_result)
+void Fftw::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 {
 //    Fft::forward(real_input, complex_result);
 //
