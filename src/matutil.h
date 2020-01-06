@@ -108,31 +108,52 @@ static cv::Mat channel_to_cv_mat(int channel_id, cv::Mat &host){
     return result;
 }
 
-
+/*
+ * Returns complex matrix, where every element is result of formula (hostElem.real() )^2 + (hostElem.imag() )^2
+**/
 static cv::Mat sqr_mag(cv::Mat &host){
     return mat_const_operator([](std::complex<float> &c) { c = c.real() * c.real() + c.imag() * c.imag(); }, host);
 }
 
+/*
+ * Returns copy of input complex matrix, where every imaginary value is inverted
+**/
 static cv::Mat conj(cv::Mat &host){
     return mat_const_operator([](std::complex<float> &c) { c = std::complex<float>(c.real(), -c.imag()); }, host);
 }
 
+/*
+ * Returns result of element wise multiplication between n-channeled and single-channeled complex matrixes
+**/
 static cv::Mat mul_matn_mat1(cv::Mat &host, cv::Mat &other){
     return matn_mat1_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
 }
 
+/*
+ * Returns result of element wise multiplication between two n-channeled complex matrixes
+**/
 static cv::Mat mul_matn_matn(cv::Mat &host, cv::Mat &other){
     return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
 }
 
+/*
+ * Returns result of element wise addition to complex matrix
+**/
 static cv::Mat add_scalar(cv::Mat &host, const float &val){
     return mat_const_operator([&val](std::complex<float> &c) { c += val; }, host);
 }
 
+/*
+ * Returns result of element wise division between two n-channeled complex matrixes
+**/
 static cv::Mat divide_matn_matn(cv::Mat &host, cv::Mat &other){
     return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs /= c_rhs; }, host, other);
 }
 
+/*
+ * Helper function to iterate through an input complex matrix.
+ * Creates copy of the matrix, executes supplied function on each element, then returns the copy.
+**/
 static cv::Mat mat_const_operator(const std::function<void (std::complex<float> &)> &op, cv::Mat &host){
     assert(host.channels() % 2 == 0);
     cv::Mat result = host.clone();
@@ -148,6 +169,11 @@ static cv::Mat mat_const_operator(const std::function<void (std::complex<float> 
     return result;
 }
 
+/*
+ * Helper function to iterate through n-channeled and single-channeled complex matrixes.
+ * Creates copy of the n-channeled matrix, executes supplied function on each element of it, then returns the copy.
+ * No matter which channel, each point of the n-channeled copy will be processed by its corresponding point in the other matrix.
+**/
 static cv::Mat matn_mat1_operator(void (*op)(std::complex<float> &, const std::complex<float> &), cv::Mat &host, cv::Mat &other){
     assert(host.channels() % 2 == 0);
     assert(other.channels() == 2);
@@ -168,6 +194,12 @@ static cv::Mat matn_mat1_operator(void (*op)(std::complex<float> &, const std::c
     return result;
 }
 
+/*
+ * Helper function to iterate through n-channeled and single-channeled complex matrixes.
+ * Creates copy of the first n-channeled matrix, executes supplied function on each element of it, then returns the copy.
+ * Every value in the first matrix will be processed with its corresponding value in the other matrix,
+ * both channel and coordinate wise.
+**/
 static cv::Mat mat_mat_operator(void (*op)(std::complex<float> &, const std::complex<float> &), cv::Mat &host, cv::Mat &other){
     assert(host.channels() % 2 == 0);
     assert(other.channels() == host.channels());
