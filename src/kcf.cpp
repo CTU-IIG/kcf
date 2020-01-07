@@ -418,6 +418,7 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
     max_idx = std::distance(vec.begin(), max_it);
 
     cv::Point2i max_response_pt = IF_BIG_BATCH(max_it->loc, max_it->max.loc);
+    // EDIT: Use MatUtil::plane() here (part of _Test conversion)
     cv::Mat max_response_map    = IF_BIG_BATCH(d->threadctxs[0].response.plane(max_idx),
                                                max_it->response.plane(0));
 
@@ -452,6 +453,7 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
                     cross.x = cross.x / fit_size.width  * tmp.cols + tmp.cols / 2;
                     cross.y = cross.y / fit_size.height * tmp.rows + tmp.rows / 2;
                 } else {
+                    // EDIT: Use MatUtil::plane() here (part of _Test conversion)
                     cv::cvtColor(threadctx.response.plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0)),
                             tmp, cv::COLOR_GRAY2BGR);
                     tmp /= max; // Normalize to 1
