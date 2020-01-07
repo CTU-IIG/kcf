@@ -505,11 +505,14 @@ void KCF_Tracker::track(cv::Mat &img)
         it.async_res.wait();
 
 #else  // !ASYNC
+        
+    // Usually tracks 15 scale/angle combinations
     NORMAL_OMP_PARALLEL_FOR
     for (uint i = 0; i < d->threadctxs.size(); ++i)
         d->threadctxs[i].track(*this, input_rgb, input_gray);
 #endif
 
+    return;
     cv::Point2d new_location;
     uint max_idx;
     max_response = findMaxReponse(max_idx, new_location);
@@ -557,6 +560,14 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
                          kcf.p_current_angle + IF_BIG_BATCH(max.angle(i), angle))
                 .copyTo(patch_feats.scale(i));
         DEBUG_PRINT(patch_feats.scale(i));
+        
+        kcf.get_features(input_rgb, input_gray, &dbg_patch IF_BIG_BATCH([i],),
+                         kcf.p_current_center.x, kcf.p_current_center.y,
+                         kcf.p_windows_size.width, kcf.p_windows_size.height,
+                         kcf.p_current_scale * IF_BIG_BATCH(max.scale(i), scale),
+                         kcf.p_current_angle + IF_BIG_BATCH(max.angle(i), angle))
+                .copyTo(MatUtil::scale(i, patch_feats_Test));
+        DEBUG_PRINT(MatUtil::scale(i, patch_feats_Test));
     }
 
     kcf.fft.forward_window(patch_feats, zf, temp);
