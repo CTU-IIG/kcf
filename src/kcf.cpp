@@ -571,15 +571,26 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
     }
 
     kcf.fft.forward_window(patch_feats, zf, temp);
+    kcf.fft.forward_window(patch_feats_Test, zf_Test, temp_Test);
     DEBUG_PRINTM(zf);
-
+    DEBUG_PRINTM(zf_Test);
+    
     if (kcf.m_use_linearkernel) {
+        // Unused feature
         kzf = zf.mul(kcf.model->model_alphaf).sum_over_channels();
     } else {
         gaussian_correlation(kzf, zf, kcf.model->model_xf, kcf.p_kernel_sigma, false, kcf);
         DEBUG_PRINTM(kzf);
         kzf = kzf.mul(kcf.model->model_alphaf);
+        
+        gaussian_correlation(kzf_Test, zf_Test, kcf.model->model_xf_Test, kcf.p_kernel_sigma, false, kcf);
+        DEBUG_PRINTM(kzf_Test);
+        kzf_Test = MatUtil::mul_matn_mat1(kzf_Test, kcf.model->model_alphaf_Test);
     }
+    DEBUG_PRINTM(kzf);
+    DEBUG_PRINTM(kzf_Test);
+    return;
+    
     kcf.fft.inverse(kzf, response);
 
     DEBUG_PRINTM(response);
