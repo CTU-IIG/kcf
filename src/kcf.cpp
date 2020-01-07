@@ -418,11 +418,13 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
     max_idx = std::distance(vec.begin(), max_it);
 
     cv::Point2i max_response_pt = IF_BIG_BATCH(max_it->loc, max_it->max.loc);
-    // EDIT: Use MatUtil::plane() here (part of _Test conversion)
     cv::Mat max_response_map    = IF_BIG_BATCH(d->threadctxs[0].response.plane(max_idx),
                                                max_it->response.plane(0));
-
+    cv::Mat max_response_map_Test = IF_BIG_BATCH(MatUtil::plane(max_idx, d->threadctxs[0].response),
+                                               MatUtil::plane(0, max_it->response));
+    
     DEBUG_PRINTM(max_response_map);
+    DEBUG_PRINTM(max_response_map_Test);
     DEBUG_PRINT(max_response_pt);
 
     max_response_pt = wrapAroundFreq(max_response_pt, max_response_map);
@@ -453,8 +455,9 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
                     cross.x = cross.x / fit_size.width  * tmp.cols + tmp.cols / 2;
                     cross.y = cross.y / fit_size.height * tmp.rows + tmp.rows / 2;
                 } else {
-                    // EDIT: Use MatUtil::plane() here (part of _Test conversion)
                     cv::cvtColor(threadctx.response.plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0)),
+                            tmp, cv::COLOR_GRAY2BGR);
+                    cv::cvtColor(MatUtil::plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0), threadctx.response),
                             tmp, cv::COLOR_GRAY2BGR);
                     tmp /= max; // Normalize to 1
                     cross += cv::Point2d(tmp.size())/2;
