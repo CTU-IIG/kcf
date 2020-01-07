@@ -69,17 +69,13 @@ private:
     MatScaleFeats patch_feats{num_scales * num_angles, num_features, roi};
     MatScaleFeats temp{num_scales * num_angles, num_features, roi};
 
-    MatScales ifft2_res{num_scales * num_angles, roi};
-
     ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_features, num_scales * num_angles};
     ComplexMat kzf{uint(freq_size.height), uint(freq_size.width), 1, num_scales * num_angles};
 
     // REPLACEMENT
     cv::Mat patch_feats_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
     cv::Mat temp_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
-
-    cv::Mat ifft2_res_Test = cv::Mat(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
-    
+  
     cv::Mat zf_Test = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
     cv::Mat kzf_Test = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
     
