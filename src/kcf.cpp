@@ -420,8 +420,9 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
     cv::Point2i max_response_pt = IF_BIG_BATCH(max_it->loc, max_it->max.loc);
     cv::Mat max_response_map    = IF_BIG_BATCH(d->threadctxs[0].response.plane(max_idx),
                                                max_it->response.plane(0));
+    cv::Mat tempResponse = max_it->response_Test;
     cv::Mat max_response_map_Test = IF_BIG_BATCH(MatUtil::plane(max_idx, d->threadctxs[0].response_Test),
-                                               MatUtil::plane(0, max_it->response_Test));
+                                               MatUtil::plane(0, tempResponse));
     
     DEBUG_PRINTM(max_response_map);
     DEBUG_PRINTM(max_response_map_Test);
@@ -520,7 +521,7 @@ void KCF_Tracker::track(cv::Mat &img)
     cv::Point2d new_location;
     uint max_idx;
     max_response = findMaxReponse(max_idx, new_location);
-
+    return;
     double angle_change = m_use_subgrid_angle ? sub_grid_angle(max_idx)
                                               : d->IF_BIG_BATCH(threadctxs[0].max, threadctxs).angle(max_idx);
     p_current_angle += angle_change;
