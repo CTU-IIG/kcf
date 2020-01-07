@@ -512,7 +512,6 @@ void KCF_Tracker::track(cv::Mat &img)
         d->threadctxs[i].track(*this, input_rgb, input_gray);
 #endif
 
-    return;
     cv::Point2d new_location;
     uint max_idx;
     max_response = findMaxReponse(max_idx, new_location);
@@ -589,18 +588,22 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
     }
     DEBUG_PRINTM(kzf);
     DEBUG_PRINTM(kzf_Test);
-    return;
     
     kcf.fft.inverse(kzf, response);
+    kcf.fft.inverse(kzf_Test, response_Test);
 
     DEBUG_PRINTM(response);
-
+    DEBUG_PRINTM(response_Test);
+    
     /* target location is at the maximum response. we must take into
     account the fact that, if the target doesn't move, the peak
     will appear at the top-left corner, not at the center (this is
     discussed in the paper). the responses wrap around cyclically. */
     double min_val, max_val;
     cv::Point2i min_loc, max_loc;
+    
+    double min_val_Test, max_val_Test;
+    cv::Point2i min_loc_Test, max_loc_Test;
 #ifdef BIG_BATCH
     for (size_t i = 0; i < max.size(); ++i) {
         cv::minMaxLoc(response.plane(i), &min_val, &max_val, &min_loc, &max_loc);
@@ -611,10 +614,13 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
     }
 #else
     cv::minMaxLoc(response.plane(0), &min_val, &max_val, &min_loc, &max_loc);
-
     DEBUG_PRINT(max_loc);
     DEBUG_PRINT(max_val);
-
+    
+    cv::minMaxLoc(MatUtil::plane(0, response_Test), &min_val_Test, &max_val_Test, &min_loc_Test, &max_loc_Test);
+    DEBUG_PRINT(max_loc_Test);
+    DEBUG_PRINT(max_val_Test);
+    
     double weight = scale < 1. ? scale : 1. / scale;
     max.response = max_val * weight;
     max.loc = max_loc;

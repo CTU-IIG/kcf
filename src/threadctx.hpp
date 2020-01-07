@@ -78,6 +78,8 @@ private:
     cv::Mat patch_feats_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
     cv::Mat temp_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
 
+    cv::Mat ifft2_res_Test = cv::Mat(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
+    
     cv::Mat zf_Test = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
     cv::Mat kzf_Test = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
     
@@ -90,6 +92,7 @@ public:
 #endif
 
     MatScales response{num_scales * num_angles, roi};
+    cv::Mat response_Test = cv::Mat(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
 
     struct Max {
         cv::Point2i loc;
