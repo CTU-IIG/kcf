@@ -420,7 +420,7 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
     cv::Point2i max_response_pt = IF_BIG_BATCH(max_it->loc, max_it->max.loc);
     cv::Mat max_response_map    = IF_BIG_BATCH(d->threadctxs[0].response.plane(max_idx),
                                                max_it->response.plane(0));
-    cv::Mat tempResponse = max_it->response_Test;
+    cv::Mat tempResponse = IF_BIG_BATCH(,max_it->response_Test);
     cv::Mat max_response_map_Test = IF_BIG_BATCH(MatUtil::plane(max_idx, d->threadctxs[0].response_Test),
                                                MatUtil::plane(0, tempResponse));
     
