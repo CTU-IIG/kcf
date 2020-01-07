@@ -521,7 +521,6 @@ void KCF_Tracker::track(cv::Mat &img)
     cv::Point2d new_location;
     uint max_idx;
     max_response = findMaxReponse(max_idx, new_location);
-    return;
     double angle_change = m_use_subgrid_angle ? sub_grid_angle(max_idx)
                                               : d->IF_BIG_BATCH(threadctxs[0].max, threadctxs).angle(max_idx);
     p_current_angle += angle_change;
