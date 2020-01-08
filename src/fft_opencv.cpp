@@ -25,7 +25,7 @@ void FftOpencv::forward(const MatScales &real_input, ComplexMat &complex_result)
 // REPLACEMENT
 void FftOpencv::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 {
-//    Fft::forward(real_input, complex_result);
+    Fft::forward(real_input, complex_result);
 
     cv::dft(real_input, complex_result, cv::DFT_COMPLEX_OUTPUT);
 }
@@ -48,7 +48,7 @@ void FftOpencv::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, 
 // Real and imag parts of complex elements from previous format are represented by 2 neighbouring channels.
 void FftOpencv::forward_window(cv::Mat &feat, cv::Mat &complex_result, cv::Mat &temp)
 {
-    //Fft::forward_window(feat, complex_result, temp);
+    Fft::forward_window(feat, complex_result, temp);
     (void) temp;
     for (uint i = 0; i < uint(feat.size[0]); ++i) {
         for (uint j = 0; j < uint(feat.size[1]); ++j) {
@@ -75,7 +75,7 @@ void FftOpencv::inverse(ComplexMat &  complex_input, MatScales & real_result)
 // REPLACEMENT
 void FftOpencv::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {
-    //Fft::inverse(complex_input, real_result);
+    Fft::inverse(complex_input, real_result);
 
     assert(complex_input.channels() % 2 == 0);
     for (uint i = 0; i < uint(complex_input.channels() / 2); ++i) {

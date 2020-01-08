@@ -95,8 +95,8 @@ void Fftw::forward(const MatScales &real_input, ComplexMat &complex_result)
 // REPLACEMENT
 void Fftw::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 {
-//    Fft::forward(real_input, complex_result);
-//
+    Fft::forward(real_input, complex_result);
+
     if (real_input.dims == 2)
         fftwf_execute_dft_r2c(plan_f, reinterpret_cast<float *>(real_input.data),
                               reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>>(0)));
@@ -134,7 +134,7 @@ void Fftw::forward_window(MatScaleFeats  &feat, ComplexMat & complex_result, Mat
 // REPLACEMENT
 void Fftw::forward_window(cv::Mat &feat, cv::Mat & complex_result, cv::Mat &temp)
 {
-//    Fft::forward_window(feat, complex_result, temp);
+    Fft::forward_window(feat, complex_result, temp);
 
     for (uint i = 0; i < uint(feat.size[0]); ++i) {
         for (uint j = 0; j < uint(feat.size[1]); ++j) {
@@ -176,7 +176,7 @@ void Fftw::inverse(ComplexMat &complex_input, MatScales &real_result)
 // REPLACEMENT
 void Fftw::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {
-//    Fft::inverse(complex_input, real_result);
+    Fft::inverse(complex_input, real_result);
 
     fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_input.ptr<std::complex<float>>(0));
     float *out = real_result.ptr<float>();
