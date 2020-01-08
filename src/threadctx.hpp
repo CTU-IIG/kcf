@@ -66,13 +66,6 @@ private:
     uint num_angles;
     cv::Size freq_size = Fft::freq_size(roi);
 
-    MatScaleFeats patch_feats{num_scales * num_angles, num_features, roi};
-    MatScaleFeats temp{num_scales * num_angles, num_features, roi};
-
-    ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_features, num_scales * num_angles};
-    ComplexMat kzf{uint(freq_size.height), uint(freq_size.width), 1, num_scales * num_angles};
-
-    // REPLACEMENT
     cv::Mat patch_feats_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
     cv::Mat temp_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
   
@@ -87,7 +80,6 @@ public:
     std::future<void> async_res;
 #endif
 
-    MatScales response{num_scales * num_angles, roi};
     cv::Mat response_Test = cv::Mat(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
 
     struct Max {
