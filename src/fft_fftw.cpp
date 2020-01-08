@@ -11,9 +11,9 @@ Fftw::Fftw(){}
 fftwf_plan Fftw::create_plan_fwd(uint howmany) const
 {
     cv::Mat mat_in = cv::Mat::zeros(howmany * m_height, m_width, CV_32F);
-    ComplexMat mat_out(m_height, m_width / 2 + 1, howmany);
+    cv::Mat mat_out = cv::Mat::zeros(m_height, m_width / 2 + 1, CV_32FC(howmany * 2));
     float *in = reinterpret_cast<float *>(mat_in.data);
-    fftwf_complex *out = reinterpret_cast<fftwf_complex *>(mat_out.get_p_data());
+    fftwf_complex *out = reinterpret_cast<fftwf_complex *>(mat_out.ptr<std::complex<float>>(0));
 
     int rank = 2;
     int n[] = {(int)m_height, (int)m_width};
@@ -26,9 +26,9 @@ fftwf_plan Fftw::create_plan_fwd(uint howmany) const
 
 fftwf_plan Fftw::create_plan_inv(uint howmany) const
 {
-    ComplexMat mat_in(m_height, m_width / 2 + 1, howmany);
+    cv::Mat mat_in = cv::Mat::zeros(m_height, m_width / 2 + 1, CV_32FC(howmany * 2));
     cv::Mat mat_out = cv::Mat::zeros(howmany * m_height, m_width, CV_32F);
-    fftwf_complex *in = reinterpret_cast<fftwf_complex *>(mat_in.get_p_data());
+    fftwf_complex *in = reinterpret_cast<fftwf_complex *>(mat_in.ptr<std::complex<float>>(0));
     float *out = reinterpret_cast<float *>(mat_out.data);
 
     int rank = 2;
