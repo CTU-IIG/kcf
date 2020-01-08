@@ -76,30 +76,30 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
     // obtain a sub-window for training
     get_features(input_rgb, input_gray, nullptr, p_current_center.x, p_current_center.y,
                  p_windows_size.width, p_windows_size.height,
-                 p_current_scale, p_current_angle).copyTo(MatUtil::scale(0, model->patch_feats_Test));
+                 p_current_scale, p_current_angle).copyTo(MatUtil::scale(0, model->patch_feats));
     
-    DEBUG_PRINT(model->patch_feats_Test);
-    fft.forward_window(model->patch_feats_Test, model->xf_Test, model->temp_Test);
-    DEBUG_PRINTM(model->xf_Test);
-    model->model_xf_Test = model->model_xf_Test * (1. - interp_factor) + model->xf_Test * interp_factor;
-    DEBUG_PRINTM(model->model_xf_Test);
+    DEBUG_PRINT(model->patch_feats);
+    fft.forward_window(model->patch_feats, model->xf, model->temp);
+    DEBUG_PRINTM(model->xf);
+    model->model_xf = model->model_xf * (1. - interp_factor) + model->xf * interp_factor;
+    DEBUG_PRINTM(model->model_xf);
     
     if (m_use_linearkernel) {        
-        cv::Mat xfconj_Test = MatUtil::conj(model->xf_Test);
-        model->model_alphaf_num_Test = MatUtil::mul_matn_mat1(xfconj_Test, model->yf_Test);
-        model->model_alphaf_den_Test = MatUtil::mul_matn_matn(model->xf_Test, xfconj_Test);
+        cv::Mat xfconj = MatUtil::conj(model->xf);
+        model->model_alphaf_num = MatUtil::mul_matn_mat1(xfconj, model->yf);
+        model->model_alphaf_den = MatUtil::mul_matn_matn(model->xf, xfconj);
     } else {
         // Kernel Ridge Regression, calculate alphas (in Fourier domain)
         cv::Size sz(Fft::freq_size(feature_size));
-        cv::Mat kf_Test = cv::Mat(sz.height, sz.width, CV_32FC2);
-        (*gaussian_correlation)(kf_Test, model->model_xf_Test, model->model_xf_Test, p_kernel_sigma, true, *this);
-        DEBUG_PRINTM(kf_Test);
-        model->model_alphaf_num_Test = MatUtil::mul_matn_matn(model->yf_Test, kf_Test);
-        cv::Mat addedMat = MatUtil::add_scalar(kf_Test, p_lambda);
-        model->model_alphaf_den_Test = MatUtil::mul_matn_matn(kf_Test, addedMat);
+        cv::Mat kf = cv::Mat(sz.height, sz.width, CV_32FC2);
+        (*gaussian_correlation)(kf, model->model_xf, model->model_xf, p_kernel_sigma, true, *this);
+        DEBUG_PRINTM(kf);
+        model->model_alphaf_num = MatUtil::mul_matn_matn(model->yf, kf);
+        cv::Mat addedMat = MatUtil::add_scalar(kf, p_lambda);
+        model->model_alphaf_den = MatUtil::mul_matn_matn(kf, addedMat);
     }
-    model->model_alphaf_Test = MatUtil::divide_matn_matn(model->model_alphaf_num_Test, model->model_alphaf_den_Test);
-    DEBUG_PRINTM(model->model_alphaf_Test);
+    model->model_alphaf = MatUtil::divide_matn_matn(model->model_alphaf_num, model->model_alphaf_den);
+    DEBUG_PRINTM(model->model_alphaf);
     //        p_model_alphaf = p_yf / (kf + p_lambda);   //equation for fast training
 }
 
@@ -240,9 +240,9 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     // window weights, i.e. labels
     cv::Mat gsl(feature_size,CV_32F);
     gaussian_shaped_labels(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl);
-    fft.forward(gsl, model->yf_Test);
+    fft.forward(gsl, model->yf);
     
-    DEBUG_PRINTM(model->yf_Test);
+    DEBUG_PRINTM(model->yf);
     
     // train initial model
     train(input_rgb, input_gray, 1.0);
@@ -329,19 +329,19 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
 //    cv::Mat max_response_map    = IF_BIG_BATCH(d->threadctxs[0].response.plane(max_idx),
 //                                               max_it->response.plane(0));
     
-    cv::Mat tempResponse = IF_BIG_BATCH(,max_it->response_Test);
-    cv::Mat max_response_map_Test = IF_BIG_BATCH(MatUtil::plane(max_idx, d->threadctxs[0].response_Test),
+    cv::Mat tempResponse = IF_BIG_BATCH(,max_it->response);
+    cv::Mat max_response_map = IF_BIG_BATCH(MatUtil::plane(max_idx, d->threadctxs[0].response),
                                                MatUtil::plane(0, tempResponse));
     
     
-    DEBUG_PRINTM(max_response_map_Test);
+    DEBUG_PRINTM(max_response_map);
     DEBUG_PRINT(max_response_pt);
 
-    max_response_pt = wrapAroundFreq(max_response_pt, max_response_map_Test);
+    max_response_pt = wrapAroundFreq(max_response_pt, max_response_map);
 
     // sub pixel quadratic interpolation from neighbours
     if (m_use_subpixel_localization) {
-        new_location = sub_pixel_peak(max_response_pt, max_response_map_Test);
+        new_location = sub_pixel_peak(max_response_pt, max_response_map);
     } else {
         new_location = max_response_pt;
     }
@@ -358,7 +358,7 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
                 auto &threadctx = d->IF_BIG_BATCH(threadctxs[0], threadctxs(i, j));
                 cv::Mat tmp;
                 cv::Point2d cross = threadctx.IF_BIG_BATCH(max(i, j), max).loc;
-                cross = wrapAroundFreq(cross, max_response_map_Test);
+                cross = wrapAroundFreq(cross, max_response_map);
                 if (m_visual_debug == vd::PATCH ) {
                     threadctx.dbg_patch IF_BIG_BATCH((i, j),)
                             .convertTo(tmp, all_responses.type(), 1.0 / 255);
@@ -367,7 +367,7 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
                 } else {
 //                    cv::cvtColor(threadctx.response.plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0)),
 //                            tmp, cv::COLOR_GRAY2BGR);
-                    cv::cvtColor(MatUtil::plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0), threadctx.response_Test),
+                    cv::cvtColor(MatUtil::plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0), threadctx.response),
                             tmp, cv::COLOR_GRAY2BGR);
                     tmp /= max; // Normalize to 1
                     cross += cv::Point2d(tmp.size())/2;
@@ -471,31 +471,31 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
                          kcf.p_windows_size.width, kcf.p_windows_size.height,
                          kcf.p_current_scale * IF_BIG_BATCH(max.scale(i), scale),
                          kcf.p_current_angle + IF_BIG_BATCH(max.angle(i), angle))
-                .copyTo(MatUtil::scale(i, patch_feats_Test));
-        DEBUG_PRINT(MatUtil::scale(i, patch_feats_Test));
+                .copyTo(MatUtil::scale(i, patch_feats));
+        DEBUG_PRINT(MatUtil::scale(i, patch_feats));
     }
 
-    kcf.fft.forward_window(patch_feats_Test, zf_Test, temp_Test);
-    DEBUG_PRINTM(zf_Test);
+    kcf.fft.forward_window(patch_feats, zf, temp);
+    DEBUG_PRINTM(zf);
     
     if (kcf.m_use_linearkernel) {
         // Unused feature
     } else {
-        gaussian_correlation(kzf_Test, zf_Test, kcf.model->model_xf_Test, kcf.p_kernel_sigma, false, kcf);
-        DEBUG_PRINTM(kzf_Test);
-        kzf_Test = MatUtil::mul_matn_mat1(kzf_Test, kcf.model->model_alphaf_Test);
+        gaussian_correlation(kzf, zf, kcf.model->model_xf, kcf.p_kernel_sigma, false, kcf);
+        DEBUG_PRINTM(kzf);
+        kzf = MatUtil::mul_matn_mat1(kzf, kcf.model->model_alphaf);
     }
-    DEBUG_PRINTM(kzf_Test);
-    kcf.fft.inverse(kzf_Test, response_Test);
-    DEBUG_PRINTM(response_Test);
+    DEBUG_PRINTM(kzf);
+    kcf.fft.inverse(kzf, response);
+    DEBUG_PRINTM(response);
     
     /* target location is at the maximum response. we must take into
     account the fact that, if the target doesn't move, the peak
     will appear at the top-left corner, not at the center (this is
     discussed in the paper). the responses wrap around cyclically. */
     
-    double min_val_Test, max_val_Test;
-    cv::Point2i min_loc_Test, max_loc_Test;
+    double min_val, max_val;
+    cv::Point2i min_loc, max_loc;
 #ifdef BIG_BATCH
     for (size_t i = 0; i < max.size(); ++i) {
         cv::minMaxLoc(response.plane(i), &min_val, &max_val, &min_loc, &max_loc);
@@ -505,13 +505,13 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input
         max[i].loc = max_loc;
     }
 #else    
-    cv::minMaxLoc(MatUtil::plane(0, response_Test), &min_val_Test, &max_val_Test, &min_loc_Test, &max_loc_Test);
-    DEBUG_PRINT(max_loc_Test);
-    DEBUG_PRINT(max_val_Test);
+    cv::minMaxLoc(MatUtil::plane(0, response), &min_val, &max_val, &min_loc, &max_loc);
+    DEBUG_PRINT(max_loc);
+    DEBUG_PRINT(max_val);
 
     double weight = scale < 1. ? scale : 1. / scale;
-    max.response = max_val_Test * weight;
-    max.loc = max_loc_Test;
+    max.response = max_val * weight;
+    max.loc = max_loc;
 #endif
 }
 
@@ -753,35 +753,35 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
 {
     TRACE("");
     DEBUG_PRINTM(xf);
-    xf_sqr_norm_Test = MatUtil::sqr_norm(xf);
-    DEBUG_PRINT(xf_sqr_norm_Test);
+    xf_sqr_norm = MatUtil::sqr_norm(xf);
+    DEBUG_PRINT(xf_sqr_norm);
     
     if (auto_correlation) {
-        yf_sqr_norm_Test = xf_sqr_norm_Test;
+        yf_sqr_norm = xf_sqr_norm;
     } else {
         DEBUG_PRINTM(yf);
-        yf_sqr_norm_Test = MatUtil::sqr_norm(yf);
+        yf_sqr_norm = MatUtil::sqr_norm(yf);
     }
-    DEBUG_PRINT(yf_sqr_norm_Test);
+    DEBUG_PRINT(yf_sqr_norm);
     
     cv::Mat conjMat = MatUtil::conj(yf);   
-    xyf_Test = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
-    DEBUG_PRINTM(xyf_Test);
+    xyf = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
+    DEBUG_PRINTM(xyf);
 
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
-    cv::Mat xyf_sum = MatUtil::sum_over_channels(xyf_Test);
+    cv::Mat xyf_sum = MatUtil::sum_over_channels(xyf);
     DEBUG_PRINTM(xyf_sum);
-    kcf.fft.inverse(xyf_sum, ifft_res_Test);
-    DEBUG_PRINTM(ifft_res_Test);
+    kcf.fft.inverse(xyf_sum, ifft_res);
+    DEBUG_PRINTM(ifft_res);
 
     float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
-    cv::Mat plane = MatUtil::plane(0,ifft_res_Test);
+    cv::Mat plane = MatUtil::plane(0,ifft_res);
     DEBUG_PRINTM(plane);
-    cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm_Test + yf_sqr_norm_Test - 2 * MatUtil::plane(0,ifft_res_Test))
+    cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm + yf_sqr_norm - 2 * MatUtil::plane(0,ifft_res))
             * numel_xf_inv, 0), plane);
     DEBUG_PRINTM(plane);
 
-    kcf.fft.forward(MatUtil::plane(0,ifft_res_Test), result);
+    kcf.fft.forward(MatUtil::plane(0,ifft_res), result);
 }
 
 float get_response_circular(cv::Point2i &pt, cv::Mat &response)

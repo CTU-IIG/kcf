@@ -64,11 +64,11 @@ private:
     uint num_angles;
     cv::Size freq_size = Fft::freq_size(roi);
 
-    cv::Mat patch_feats_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
-    cv::Mat temp_Test{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
+    cv::Mat patch_feats{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
+    cv::Mat temp{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
   
-    cv::Mat zf_Test = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
-    cv::Mat kzf_Test = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
+    cv::Mat zf = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
+    cv::Mat kzf = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
     
     KCF_Tracker::GaussianCorrelation gaussian_correlation{num_scales * num_angles, num_features, roi};
     
@@ -78,7 +78,7 @@ public:
     std::future<void> async_res;
 #endif
 
-    cv::Mat response_Test = cv::Mat(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
+    cv::Mat response = cv::Mat(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
 
     struct Max {
         cv::Point2i loc;

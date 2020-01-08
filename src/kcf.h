@@ -134,15 +134,15 @@ private:
     public:
         
         // Complex matrix now equals 2*k channels matrix by design
-        cv::Mat yf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
-        cv::Mat model_alphaf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
-        cv::Mat model_alphaf_num_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
-        cv::Mat model_alphaf_den_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
-        cv::Mat model_xf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
-        cv::Mat xf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
+        cv::Mat yf = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
+        cv::Mat model_alphaf = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
+        cv::Mat model_alphaf_num = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
+        cv::Mat model_alphaf_den = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
+        cv::Mat model_xf = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
+        cv::Mat xf = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
 
-        cv::Mat patch_feats_Test{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
-        cv::Mat temp_Test{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
+        cv::Mat patch_feats{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
+        cv::Mat temp{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
         
         
         Model(cv::Size feature_size, uint _n_feats)
@@ -159,18 +159,18 @@ private:
         GaussianCorrelation(uint num_scales, uint num_feats, cv::Size size)
         {
                 cv::Size temp = Fft::freq_size(size);
-                xyf_Test = cv::Mat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
-                ifft_res_Test = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
-                k_Test = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
+                xyf = cv::Mat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
+                ifft_res = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
+                k = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
             }
         void operator()(cv::Mat &result, cv::Mat &xf, cv::Mat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
 
       private:
-        float xf_sqr_norm_Test;
-        float yf_sqr_norm_Test;
-        cv::Mat xyf_Test;
-        cv::Mat ifft_res_Test;
-        cv::Mat k_Test;
+        float xf_sqr_norm;
+        float yf_sqr_norm;
+        cv::Mat xyf;
+        cv::Mat ifft_res;
+        cv::Mat k;
     };
 
     //helping functions
