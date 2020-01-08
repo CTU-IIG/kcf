@@ -5,6 +5,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include "debug.h"
+#include <functional>
 
 class MatUtil{
 public:

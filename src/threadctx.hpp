@@ -2,9 +2,7 @@
 #define SCALE_VARS_HPP
 
 #include <future>
-#include "dynmem.hpp"
 #include "kcf.h"
-#include "complexmat.hpp"
 #include <vector>
 
 class KCF_Tracker;

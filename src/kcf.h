@@ -6,7 +6,6 @@
 #include <memory>
 #include "fhog.hpp"
 
-#include "complexmat.hpp"
 #ifdef CUFFT
 #include "cuda_error_check.hpp"
 #include <cuda_runtime.h>
@@ -133,20 +132,7 @@ private:
         cv::Size feature_size;
         uint height, width, n_feats;
     public:
-        ComplexMat yf {height, width, 1};
-        ComplexMat model_alphaf {height, width, 1};
-        ComplexMat model_alphaf_num {height, width, 1};
-        ComplexMat model_alphaf_den {height, width, 1};
-        ComplexMat model_xf {height, width, n_feats};
-        ComplexMat xf {height, width, n_feats};
-
         
-        // Temporary variables for training
-        MatScaleFeats patch_feats{1, n_feats, feature_size};
-        MatScaleFeats temp{1, n_feats, feature_size};
-
-        
-        // FORMER ATTRIBUTES CONVERTED TO cv::Mat
         // Complex matrix now equals 2*k channels matrix by design
         cv::Mat yf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
         cv::Mat model_alphaf_Test = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
@@ -171,26 +157,15 @@ private:
     class GaussianCorrelation {
       public:
         GaussianCorrelation(uint num_scales, uint num_feats, cv::Size size)
-            : xf_sqr_norm(num_scales)
-            , xyf(Fft::freq_size(size), num_feats, num_scales)
-            , ifft_res(num_scales, size)
-            , k(num_scales, size)
         {
                 cv::Size temp = Fft::freq_size(size);
                 xyf_Test = cv::Mat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
                 ifft_res_Test = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
                 k_Test = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
             }
-        void operator()(ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
         void operator()(cv::Mat &result, cv::Mat &xf, cv::Mat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
 
       private:
-        DynMem xf_sqr_norm;
-        DynMem yf_sqr_norm{1};
-        ComplexMat xyf;
-        MatScales ifft_res;
-        MatScales k;
-        
         float xf_sqr_norm_Test;
         float yf_sqr_norm_Test;
         cv::Mat xyf_Test;

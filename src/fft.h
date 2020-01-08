@@ -5,7 +5,6 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <cassert>
-#include "complexmat.hpp"
 
 #ifdef BIG_BATCH
 #define BIG_BATCH_MODE 1
