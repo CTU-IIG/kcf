@@ -11,6 +11,8 @@
 #include "kcf.h"
 #include "vot.hpp"
 #include "videoio.hpp"
+#include <opencv2/videoio.hpp>
+#include <opencv2/core/core_c.h>
 
 // Needed for OpenCV <= 3.2 as replacement for Rect::empty()
 bool empty(cv::Rect r)
@@ -297,7 +299,7 @@ int main(int argc, char *argv[])
     io->outputBoundingBox(init_rect);
 
     if (!video_out.empty()) {
-        int codec = CV_FOURCC('M', 'J', 'P', 'G');  // select desired codec (must be available at runtime)
+        int codec = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');  // select desired codec (must be available at runtime)
         double fps = 25.0;                          // framerate of the created video stream
         videoWriter.open(video_out, codec, fps, image.size(), true);
     }

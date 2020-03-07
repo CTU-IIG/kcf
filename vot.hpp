@@ -13,6 +13,7 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include "videoio.hpp"
+#include <opencv2/imgcodecs.hpp>
 
 
 // Bounding box type
@@ -160,7 +161,7 @@ public:
         std::string line;
         std::getline (p_images_stream, line);
     	if (line.empty() && p_images_stream.eof()) return -1;
-        img = cv::imread(line, CV_LOAD_IMAGE_COLOR);
+        img = cv::imread(line, cv::IMREAD_COLOR);
         num++;
 
         return 1;

@@ -8,6 +8,7 @@
 #include "threadctx.hpp"
 #include "debug.h"
 #include <limits>
+#include <opencv/highgui.h>
 
 #ifdef OPENMP
 #include <omp.h>
@@ -154,7 +155,7 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 
     cv::Mat input_gray, input_rgb = img.clone();
     if (img.channels() == 3) {
-        cv::cvtColor(img, input_gray, CV_BGR2GRAY);
+        cv::cvtColor(img, input_gray, cv::COLOR_BGR2GRAY);
         input_gray.convertTo(input_gray, CV_32FC1);
     } else
         img.convertTo(input_gray, CV_32FC1);
@@ -403,7 +404,7 @@ void KCF_Tracker::track(cv::Mat &img)
 
     cv::Mat input_gray, input_rgb = img.clone();
     if (img.channels() == 3) {
-        cv::cvtColor(img, input_gray, CV_BGR2GRAY);
+        cv::cvtColor(img, input_gray, cv::COLOR_BGR2GRAY);
         input_gray.convertTo(input_gray, CV_32FC1);
     } else
         img.convertTo(input_gray, CV_32FC1);
