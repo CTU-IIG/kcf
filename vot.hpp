@@ -13,7 +13,6 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include "videoio.hpp"
-#include <opencv2/imgcodecs.hpp>
 
 
 // Bounding box type
