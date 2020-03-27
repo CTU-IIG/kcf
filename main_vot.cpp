@@ -11,7 +11,6 @@
 #include "kcf.h"
 #include "vot.hpp"
 #include "videoio.hpp"
-#include <opencv2/videoio.hpp>
 #include <opencv2/core/core_c.h>
 
 // Needed for OpenCV <= 3.2 as replacement for Rect::empty()
