@@ -116,6 +116,7 @@ static inline std::ostream &operator<<(std::ostream &out, const cv::MatSize &msi
 #endif
 
 std::ostream &operator<<(std::ostream &os, const DbgTracer::Printer<cv::Mat> &p);
+std::ostream &operator<<(std::ostream &os, const DbgTracer::Printer<cv::UMat> &p);
 
 #if defined(CUFFT)
 static inline std::ostream &operator<<(std::ostream &os, const cufftComplex &p)
