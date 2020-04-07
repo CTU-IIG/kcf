@@ -117,6 +117,69 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 {
     __dbgTracer.debug = m_debug;
     TRACE("");
+    
+//    cv::UMat test = cv::UMat(2,2,CV_32FC4,float(1));
+//    cv::UMat test = cv::UMat(3, std::vector<int>({2, 2, 2}).data(), CV_32FC2, float(5));
+//    cv::UMat testPl = cv::UMat(test.size[1], test.size[2], test.type(), test.ptr<float>(0));
+    
+//    
+////    cv::Mat_<std::complex<float>> testComplex = cv::Mat_<std::complex<float>>(test2);
+//    
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[0] = float(1);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[1] = float(2);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[2] = float(3);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[3] = float(4);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[4] = float(5);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[5] = float(6);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[6] = float(7);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[7] = float(8);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[0] = float(9);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[1] = float(10);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[2] = float(11);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[3] = float(12);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[4] = float(13);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[5] = float(14);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[6] = float(15);
+//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[7] = float(16);
+//    
+//    cv::Mat matTest = cv::Mat(test.size[1], test.size[2], test.type(), test.getMat(cv::ACCESS_READ).ptr<float>(1));
+//    cv::UMat testPl = matTest.getUMat(cv::ACCESS_RW);
+//    cv::UMat test2 = cv::UMat(2,2,CV_32FC2,float(6));
+//    DEBUG_PRINTM(test);
+//    DEBUG_PRINTM(testPl);
+//    DEBUG_PRINTM(test2);
+//    return;
+//    
+//    int from_to[] = { 0,0 };
+//    cv::mixChannels(&testPl,1,&test2,1,from_to,1);
+//    int from_to2[] = { 1,1 };
+//    cv::mixChannels(&testPl,1,&test2,1,from_to2,1);
+//    
+//    DEBUG_PRINTM(test2);
+//    return;
+//    
+//    
+//    assert(test.channels() % 2 == 0);
+//    for (uint i = 0; i < test.rows; ++i) {
+//        for (uint j = 0; j < test.cols; ++j){
+//            for (uint k = 0; k < test.channels() / 2 ; ++k){
+//                std::complex<float> cpxVal = test.ptr<std::complex<float>>(i)[(test.channels() / 2)*j + k];
+//                cpxVal.imag(- cpxVal.imag());
+//                test.ptr<std::complex<float>>(i)[(test.channels() / 2)*j + k] = cpxVal;
+//                DEBUG_PRINTM(cpxVal);
+//            }
+//        }
+//    }
+//    
+//    cv::Mat test = cv::Mat(3, std::vector<int>({2, 2, 2}).data(), CV_32FC2, float(5));
+//    test.ptr<float>(0)[0] = float(1);
+//    test.ptr<float>(1)[0] = float(1);
+//    test.ptr<float>(1,1)[0] = float(1);
+//    
+//    DEBUG_PRINTM(test);
+//    
+//    
+//    return;
 
     // check boundary, enforce min size
     double x1 = bbox.x, x2 = bbox.x + bbox.width, y1 = bbox.y, y2 = bbox.y + bbox.height;
