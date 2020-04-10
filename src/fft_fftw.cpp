@@ -78,6 +78,12 @@ void Fftw::set_window(const cv::Mat &window)
     m_window = window;
 }
 
+void Fftw::set_window(const cv::UMat &window)
+{
+    Fft::set_window(window);
+    m_window_Test = window;
+}
+
 void Fftw::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 {
     Fft::forward(real_input, complex_result);
@@ -89,6 +95,20 @@ void Fftw::forward(const cv::Mat &real_input, cv::Mat &complex_result)
     else
         fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.data),
                               reinterpret_cast<fftwf_complex *>(complex_result.ptr<std::complex<float>>(0)));
+#endif
+}
+
+void Fftw::forward(const cv::UMat &real_input, cv::UMat &complex_result)
+{
+    Fft::forward(real_input, complex_result);
+
+    if (real_input.dims == 2)
+        fftwf_execute_dft_r2c(plan_f, reinterpret_cast<float *>(real_input.getMat(cv::ACCESS_RW).data),
+                              reinterpret_cast<fftwf_complex *>(complex_result.getMat(cv::ACCESS_RW).ptr<std::complex<float>>(0)));
+#ifdef BIG_BATCH
+    else
+        fftwf_execute_dft_r2c(plan_f_all_scales, reinterpret_cast<float *>(real_input.getMat(cv::ACCESS_RW).data),
+                              reinterpret_cast<fftwf_complex *>(complex_result.getMat(cv::ACCESS_RW).ptr<std::complex<float>>(0)));
 #endif
 }
 
@@ -115,12 +135,51 @@ void Fftw::forward_window(cv::Mat &feat, cv::Mat & complex_result, cv::Mat &temp
 #endif
 }
 
+void Fftw::forward_window(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp)
+{
+    Fft::forward_window(feat, complex_result, temp);
+
+    for (uint i = 0; i < uint(feat.size[0]); ++i) {
+        for (uint j = 0; j < uint(feat.size[1]); ++j) {
+            cv::UMat feat_plane = MatUtil::plane(i,j,feat);
+            cv::UMat temp_plane = MatUtil::plane(i,j,temp);
+            temp_plane = feat_plane.mul(m_window);
+        }
+    }
+    
+    float *in = temp.getMat(cv::ACCESS_RW).ptr<float>();
+    fftwf_complex *out = reinterpret_cast<fftwf_complex *>(complex_result.getMat(cv::ACCESS_RW).ptr<std::complex<float>>(0));
+
+    if (feat.size[0] == 1)
+        fftwf_execute_dft_r2c(plan_fw, in, out);
+#ifdef BIG_BATCH
+    else
+        fftwf_execute_dft_r2c(plan_fw_all_scales, in, out);
+#endif
+}
+
 void Fftw::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {
     Fft::inverse(complex_input, real_result);
 
     fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_input.ptr<std::complex<float>>(0));
     float *out = real_result.ptr<float>();
+
+    if (complex_input.channels() == 2)
+        fftwf_execute_dft_c2r(plan_i_1ch, in, out);
+#ifdef BIG_BATCH
+    else
+        fftwf_execute_dft_c2r(plan_i_all_scales, in, out);
+#endif
+    real_result *= 1.0 / (m_width * m_height);
+}
+
+void Fftw::inverse(cv::UMat &complex_input, cv::UMat &real_result)
+{
+    Fft::inverse(complex_input, real_result);
+
+    fftwf_complex *in = reinterpret_cast<fftwf_complex *>(complex_input.getMat(cv::ACCESS_RW).ptr<std::complex<float>>(0));
+    float *out = real_result.getMat(cv::ACCESS_RW).ptr<float>();
 
     if (complex_input.channels() == 2)
         fftwf_execute_dft_c2r(plan_i_1ch, in, out);
