@@ -15,12 +15,24 @@ void Fft::init(unsigned width, unsigned height, unsigned num_of_feats, unsigned 
 #endif
 }
 
+void Fft::set_window(const cv::UMat &window)
+{
+    cv::Mat tempInput = window.getMat(cv::ACCESS_READ);
+    set_window(tempInput);
+}
+
 void Fft::set_window(const cv::Mat &window)
 {
     assert(window.dims == 2);
     assert(window.size().width == int(m_width));
     assert(window.size().height == int(m_height));
     (void)window;
+}
+
+void Fft::forward(const cv::UMat &real_input, cv::UMat &complex_result){
+    cv::Mat tempInput = real_input.getMat(cv::ACCESS_READ);
+    cv::Mat tempResult = complex_result.getMat(cv::ACCESS_READ);
+    forward(tempInput, tempResult);
 }
 
 void Fft::forward(const cv::Mat &real_input, cv::Mat &complex_result)
@@ -39,6 +51,13 @@ void Fft::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 
     (void)real_input;
     (void)complex_result;
+}
+
+void Fft::forward_window(cv::UMat &patch_feats, cv::UMat &complex_result, cv::UMat &tmp){
+    cv::Mat tempFeats = patch_feats.getMat(cv::ACCESS_READ);
+    cv::Mat tempResult = complex_result.getMat(cv::ACCESS_READ);
+    cv::Mat tempTmp = tmp.getMat(cv::ACCESS_READ);
+    forward_window(tempFeats, tempResult, tempTmp);
 }
 
 void Fft::forward_window(cv::Mat &patch_feats, cv::Mat &complex_result, cv::Mat &tmp)
@@ -67,6 +86,13 @@ void Fft::forward_window(cv::Mat &patch_feats, cv::Mat &complex_result, cv::Mat 
         (void)complex_result;
         (void)tmp;
 }
+
+void Fft::inverse(cv::UMat &complex_input, cv::UMat &real_result){
+    cv::Mat tempInput = complex_input.getMat(cv::ACCESS_READ);
+    cv::Mat tempResult = real_result.getMat(cv::ACCESS_READ);
+    inverse(tempInput, tempResult);
+}
+
 
 void Fft::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {

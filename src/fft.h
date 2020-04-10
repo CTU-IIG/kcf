@@ -22,6 +22,11 @@ public:
     void forward(const cv::Mat &real_input, cv::Mat &complex_result);
     void forward_window(cv::Mat &patch_feats, cv::Mat &complex_result, cv::Mat &tmp);
     void inverse(cv::Mat &complex_input, cv::Mat &real_result);
+    
+    void set_window(const cv::UMat &window);
+    void forward(const cv::UMat &real_input, cv::UMat &complex_result);
+    void forward_window(cv::UMat &patch_feats, cv::UMat &complex_result, cv::UMat &tmp);
+    void inverse(cv::UMat &complex_input, cv::UMat &real_result);
 
     static cv::Size freq_size(cv::Size space_size)
     {
