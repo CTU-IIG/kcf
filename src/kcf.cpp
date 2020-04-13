@@ -79,11 +79,23 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
                  p_windows_size.width, p_windows_size.height,
                  p_current_scale, p_current_angle).copyTo(MatUtil::scale(0, model->patch_feats));
     
+    get_features(input_rgb, input_gray, nullptr, p_current_center.x, p_current_center.y,
+                 p_windows_size.width, p_windows_size.height,
+                 p_current_scale, p_current_angle).copyTo(MatUtil::scale(0, model->patch_feats_Test));
+    
     DEBUG_PRINT(model->patch_feats);
     fft.forward_window(model->patch_feats, model->xf, model->temp);
     DEBUG_PRINTM(model->xf);
     model->model_xf = model->model_xf * (1. - interp_factor) + model->xf * interp_factor;
     DEBUG_PRINTM(model->model_xf);
+            
+    DEBUG_PRINT(model->patch_feats_Test);    
+    fft.forward_window(model->patch_feats_Test, model->xf_Test, model->temp_Test);
+    DEBUG_PRINTM(model->xf_Test);
+    model->model_xf_Test.getMat(cv::ACCESS_RW) = (model->model_xf_Test.getMat(cv::ACCESS_RW) * (1. - interp_factor) + 
+            model->xf_Test.getMat(cv::ACCESS_RW) * interp_factor);
+    DEBUG_PRINTM(model->model_xf_Test);
+    
     
     if (m_use_linearkernel) {        
         cv::Mat xfconj = MatUtil::conj(model->xf);
@@ -98,10 +110,22 @@ void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_fac
         model->model_alphaf_num = MatUtil::mul_matn_matn(model->yf, kf);
         cv::Mat addedMat = MatUtil::add_scalar(kf, p_lambda);
         model->model_alphaf_den = MatUtil::mul_matn_matn(kf, addedMat);
+        
+        cv::UMat kf_Test = cv::UMat(sz.height, sz.width, CV_32FC2);
+        (*gaussian_correlation)(kf_Test, model->model_xf_Test, model->model_xf_Test, p_kernel_sigma, true, *this);
+        DEBUG_PRINTM(kf_Test);        
+        model->model_alphaf_num_Test = MatUtil::mul_matn_matn(model->yf_Test, kf_Test);
+        cv::UMat addedMat_Test = MatUtil::add_scalar(kf_Test, p_lambda);
+        model->model_alphaf_den_Test = MatUtil::mul_matn_matn(kf_Test, addedMat_Test);
+
     }
     model->model_alphaf = MatUtil::divide_matn_matn(model->model_alphaf_num, model->model_alphaf_den);
     DEBUG_PRINTM(model->model_alphaf);
+    
+    model->model_alphaf_Test = MatUtil::divide_matn_matn(model->model_alphaf_num_Test, model->model_alphaf_den_Test);
+    DEBUG_PRINTM(model->model_alphaf_Test);
     //        p_model_alphaf = p_yf / (kf + p_lambda);   //equation for fast training
+
 }
 
 static int round_pw2_down(int x)
@@ -118,7 +142,10 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     __dbgTracer.debug = m_debug;
     TRACE("");
     
-//    cv::UMat test = cv::UMat(2,2,CV_32FC4,float(1));
+//    cv::Mat test2 = cv::Mat(2,2,CV_32FC4,float(1));
+//    DEBUG_PRINTM(test2);
+//    cv::UMat test = test2.getUMat(cv::ACCESS_RW);
+//    DEBUG_PRINTM(test);
 //    cv::UMat test = cv::UMat(3, std::vector<int>({2, 2, 2}).data(), CV_32FC2, float(5));
 //    cv::UMat testPl = cv::UMat(test.size[1], test.size[2], test.type(), test.ptr<float>(0));
     
@@ -141,6 +168,8 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 //    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[5] = float(14);
 //    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[6] = float(15);
 //    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[7] = float(16);
+    
+    
 //    
 //    cv::Mat matTest = cv::Mat(test.size[1], test.size[2], test.type(), test.getMat(cv::ACCESS_READ).ptr<float>(1));
 //    cv::UMat testPl = matTest.getUMat(cv::ACCESS_RW);
@@ -300,13 +329,18 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
 
     fft.init(feature_size.width, feature_size.height, p_num_of_feats, p_num_scales * p_num_angles);
     fft.set_window(cosine_window_function(feature_size.width, feature_size.height));
+    fft.set_window(cosine_window_function_umat(feature_size.width, feature_size.height));
 
     // window weights, i.e. labels
     cv::Mat gsl(feature_size,CV_32F);
     gaussian_shaped_labels(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl);
+    cv::UMat gsl_Test = gsl.getUMat(cv::ACCESS_RW);
+    
     fft.forward(gsl, model->yf);
+    fft.forward(gsl_Test, model->yf_Test);
     
     DEBUG_PRINTM(model->yf);
+    DEBUG_PRINTM(model->yf_Test);
     
     // train initial model
     train(input_rgb, input_gray, 1.0);
@@ -745,6 +779,20 @@ cv::Mat KCF_Tracker::cosine_window_function(int dim1, int dim2)
     return ret;
 }
 
+cv::UMat KCF_Tracker::cosine_window_function_umat(int dim1, int dim2)
+{
+    cv::Mat m1(1, dim1, CV_32FC1), m2(dim2, 1, CV_32FC1);
+    double N_inv = 1. / (static_cast<double>(dim1) - 1.);
+    for (int i = 0; i < dim1; ++i)
+        m1.at<float>(i) = float(0.5 * (1. - std::cos(2. * CV_PI * static_cast<double>(i) * N_inv)));
+    N_inv = 1. / (static_cast<double>(dim2) - 1.);
+    for (int i = 0; i < dim2; ++i)
+        m2.at<float>(i) = float(0.5 * (1. - std::cos(2. * CV_PI * static_cast<double>(i) * N_inv)));
+    cv::Mat tempMat = m2 * m1;
+    cv::UMat ret = tempMat.getUMat(cv::ACCESS_RW);
+    return ret;
+}
+
 // Returns sub-window of image input centered at [cx, cy] coordinates),
 // with size [width, height]. If any pixels are outside of the image,
 // they will replicate the values at the borders.
@@ -846,6 +894,48 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
     DEBUG_PRINTM(plane);
 
     kcf.fft.forward(MatUtil::plane(0,ifft_res), result);
+}
+
+void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf, cv::UMat &yf,
+                                                  double sigma, bool auto_correlation, const KCF_Tracker &kcf)
+{
+    TRACE("");
+    DEBUG_PRINTM(xf);
+    
+    xf_sqr_norm_Test = MatUtil::sqr_norm(xf);
+    DEBUG_PRINT(xf_sqr_norm_Test);
+    
+    if (auto_correlation) {
+        yf_sqr_norm_Test = xf_sqr_norm_Test;
+    } else {
+        DEBUG_PRINTM(yf);
+        yf_sqr_norm_Test = MatUtil::sqr_norm(yf);
+    }
+    DEBUG_PRINT(yf_sqr_norm_Test);
+    
+    cv::UMat conjMat = MatUtil::conj(yf);   
+    xyf_Test = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
+    DEBUG_PRINTM(xyf_Test);
+
+    // ifft2 and sum over 3rd dimension, we dont care about individual channels
+    cv::UMat xyf_sum = MatUtil::sum_over_channels(xyf_Test);
+    DEBUG_PRINTM(xyf_sum);
+    kcf.fft.inverse(xyf_sum, ifft_res_Test);
+    DEBUG_PRINTM(ifft_res_Test);
+
+    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
+    cv::UMat plane = MatUtil::plane(0,ifft_res_Test);
+    DEBUG_PRINTM(plane);
+    cv::UMat tempPlane = plane.clone();
+    cv::multiply(tempPlane, -2, tempPlane);
+    cv::add(tempPlane, xf_sqr_norm_Test + yf_sqr_norm_Test, tempPlane);
+    cv::multiply(tempPlane, numel_xf_inv, tempPlane);
+    cv::max(tempPlane, 0, tempPlane);
+    cv::multiply(tempPlane, (-1. / (sigma * sigma)) , tempPlane);
+    cv::exp(tempPlane, plane);
+    DEBUG_PRINTM(plane);
+
+    kcf.fft.forward(MatUtil::plane(0,ifft_res_Test), result);
 }
 
 float get_response_circular(cv::Point2i &pt, cv::Mat &response)

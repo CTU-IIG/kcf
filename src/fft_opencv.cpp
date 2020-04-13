@@ -58,7 +58,6 @@ void FftOpencv::forward_window(cv::UMat &feat, cv::UMat &complex_result, cv::UMa
             cv::UMat complex_res;
             cv::UMat channel = MatUtil::plane(i, j, feat);
             cv::dft(channel.mul(m_window_Test), complex_res, cv::DFT_COMPLEX_OUTPUT);
-            
             MatUtil::set_channel(int(0), int(2*j), complex_res, complex_result);
             MatUtil::set_channel(int(1), int(2*j+1), complex_res, complex_result);
         }

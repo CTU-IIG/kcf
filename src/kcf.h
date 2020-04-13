@@ -186,6 +186,7 @@ private:
                 k_Test = cv::UMat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
             }
         void operator()(cv::Mat &result, cv::Mat &xf, cv::Mat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
+        void operator()(cv::UMat &result, cv::UMat &xf, cv::UMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
 
       private:
         float xf_sqr_norm;
@@ -194,6 +195,8 @@ private:
         cv::Mat ifft_res;
         cv::Mat k;
         
+        float xf_sqr_norm_Test;
+        float yf_sqr_norm_Test;
         cv::UMat xyf_Test;
         cv::UMat ifft_res_Test;
         cv::UMat k_Test;
@@ -206,6 +209,7 @@ private:
     std::unique_ptr<GaussianCorrelation> gaussian_correlation;
     cv::Mat circshift(const cv::Mat &patch, int x_rot, int y_rot) const;
     cv::Mat cosine_window_function(int dim1, int dim2);
+    cv::UMat cosine_window_function_umat(int dim1, int dim2);
     cv::Mat get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::Mat *dbg_patch, int cx, int cy, int size_x, int size_y, double scale, double angle) const;
     cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const;
     double sub_grid_scale(uint index);
