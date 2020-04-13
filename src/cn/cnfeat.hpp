@@ -30,6 +30,27 @@ public:
         }
         return cn_feat;
     }
+    
+    static std::vector<cv::UMat> extract(const cv::UMat & patch_rgb)
+    {
+        std::vector<cv::UMat> cn_feat(p_cn_channels);
+        for (int i = 0; i < p_cn_channels; ++i) {
+            cn_feat[i].create(patch_rgb.size(), CV_32FC1);
+        }
+
+        float * ch_ptr[p_cn_channels];
+        for (int y = 0; y < patch_rgb.rows; ++y) {
+            for (int i = 0; i < p_cn_channels; ++i)
+                ch_ptr[i] = cn_feat[i].getMat(cv::ACCESS_RW).ptr<float>(y);
+            for (int x = 0; x < patch_rgb.cols; ++x) {
+                //images in opencv stored in BGR order
+                cv::Vec3b bgr_val = patch_rgb.getMat(cv::ACCESS_RW).at<cv::Vec3b>(y,x);
+                for (int i = 0; i < p_cn_channels; ++i)
+                    ch_ptr[i][x] = p_id2feat[rgb2id(bgr_val[2], bgr_val[1], bgr_val[0])][i];
+            }
+        }
+        return cn_feat;
+    }
 
 private:
     inline static int rgb2id(int r, int g, int b)
