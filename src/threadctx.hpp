@@ -50,13 +50,20 @@ struct ThreadCtx {
 #else
         , scale(scale)
         , angle(angle)
-        {}
+        {
+            cv::Mat patch_feat{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
+            cv::Mat tmp{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
+            cv::Mat zf_Tmp = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
+            patch_feats_Test = patch_feat.getUMat(cv::ACCESS_RW);
+            temp_Test = tmp.getUMat(cv::ACCESS_RW);
+            zf_Test = zf_Tmp.getUMat(cv::ACCESS_RW);
+        }
 #endif
 
 
     ThreadCtx(ThreadCtx &&) = default;
 
-    void track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray);
+    void track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &input_gray);
 private:
     cv::Size roi;
     uint num_features;
@@ -66,9 +73,13 @@ private:
 
     cv::Mat patch_feats{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
     cv::Mat temp{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
-  
     cv::Mat zf = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
     cv::Mat kzf = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
+    
+    cv::UMat patch_feats_Test;
+    cv::UMat temp_Test;
+    cv::UMat zf_Test;
+    cv::UMat kzf_Test = cv::UMat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
     
     KCF_Tracker::GaussianCorrelation gaussian_correlation{num_scales * num_angles, num_features, roi};
     

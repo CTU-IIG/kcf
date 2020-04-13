@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
         std::getline(groundtruth_stream, line);
     }
 
-    cv::Mat image;
+    cv::UMat image;
     io->getNextImage(image);
 
     //img = firts frame, initPos = initial position in the first frame
@@ -289,7 +289,7 @@ int main(int argc, char *argv[])
         init_rect = io->getInitRectangle(); // Try to get BBox from VOT or .txt files
 
     if (empty(init_rect) || set_box_interactively) {
-        init_rect = selectBBox(image, box_out, 1);
+        init_rect = selectBBox(image.getMat(cv::ACCESS_RW), box_out, 1);
         auto b = init_rect;
         printf("--box=%d,%d,%d,%d\n", b.x, b.y, b.width, b.height);
         if (visualize_delay < 0)
@@ -304,7 +304,6 @@ int main(int argc, char *argv[])
     }
 
     tracker.init(image, init_rect, fit_size_x, fit_size_y);
-
 
     BBox_c bb;
     cv::Rect bb_rect;
@@ -368,7 +367,7 @@ int main(int argc, char *argv[])
                     break;
                 switch (key) {
                 case 'i':
-                    init_rect = selectBBox(image, box_out, io->getImageNum());
+                    init_rect = selectBBox(image.getMat(cv::ACCESS_RW), box_out, io->getImageNum());
                     tracker.init(image, init_rect, fit_size_x, fit_size_y);
                     break;
                 case 'o':

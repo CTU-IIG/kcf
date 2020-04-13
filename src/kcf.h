@@ -78,12 +78,13 @@ public:
     ~KCF_Tracker();
 
     // Init/re-init methods
-    void init(cv::Mat & img, const cv::Rect & bbox, int fit_size_x = -1, int fit_size_y = -1);
+    void init(cv::UMat & img, const cv::Rect & bbox, int fit_size_x = -1, int fit_size_y = -1);
+    void setTrackerPose(BBox_c & bbox, cv::UMat & img, int fit_size_x = -1, int fit_size_y = -1);
     void setTrackerPose(BBox_c & bbox, cv::Mat & img, int fit_size_x = -1, int fit_size_y = -1);
     void updateTrackerPosition(BBox_c & bbox);
 
     // frame-to-frame object tracking
-    void track(cv::Mat & img);
+    void track(cv::UMat & img);
     BBox_c getBBox();
     double getFilterResponse() const; // Measure of tracking accuracy
 
@@ -205,16 +206,19 @@ private:
     //helping functions
     void scale_track(ThreadCtx &vars, cv::Mat &input_rgb, cv::Mat &input_gray);
     cv::Mat get_subwindow(const cv::Mat &input, int cx, int cy, int size_x, int size_y, double angle) const;
+    cv::UMat gaussian_shaped_labels_umat(double sigma, int dim1, int dim2);
     cv::Mat gaussian_shaped_labels(double sigma, int dim1, int dim2);
     std::unique_ptr<GaussianCorrelation> gaussian_correlation;
     cv::Mat circshift(const cv::Mat &patch, int x_rot, int y_rot) const;
+    cv::UMat circshift(const cv::UMat &patch, int x_rot, int y_rot) const;
     cv::Mat cosine_window_function(int dim1, int dim2);
     cv::UMat cosine_window_function_umat(int dim1, int dim2);
     cv::Mat get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::Mat *dbg_patch, int cx, int cy, int size_x, int size_y, double scale, double angle) const;
     cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const;
     double sub_grid_scale(uint index);
     void resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray);
-    void train(cv::Mat input_rgb, cv::Mat input_gray, double interp_factor);
+    void resizeImgs(cv::UMat &input_rgb, cv::UMat &input_gray);
+    void train(cv::UMat input_rgb, cv::UMat input_gray, double interp_factor);
     double findMaxReponse(uint &max_idx, cv::Point2d &new_location) const;
     double sub_grid_angle(uint max_index);
 };

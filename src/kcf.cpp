@@ -70,18 +70,19 @@ KCF_Tracker::~KCF_Tracker()
     delete &fft;
 }
 
-void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_factor)
+void KCF_Tracker::train(cv::UMat input_rgb, cv::UMat input_gray, double interp_factor)
 {
     TRACE("");
 
     // obtain a sub-window for training
-    get_features(input_rgb, input_gray, nullptr, p_current_center.x, p_current_center.y,
+    cv::Mat inputRgbTemp = input_rgb.getMat(cv::ACCESS_RW);
+    cv::Mat inputGrayTemp = input_gray.getMat(cv::ACCESS_RW);
+    get_features(inputRgbTemp, inputGrayTemp, nullptr, p_current_center.x, p_current_center.y,
                  p_windows_size.width, p_windows_size.height,
                  p_current_scale, p_current_angle).copyTo(MatUtil::scale(0, model->patch_feats));
-    
-    get_features(input_rgb, input_gray, nullptr, p_current_center.x, p_current_center.y,
+    get_features(inputRgbTemp, inputGrayTemp, nullptr, p_current_center.x, p_current_center.y,
                  p_windows_size.width, p_windows_size.height,
-                 p_current_scale, p_current_angle).copyTo(MatUtil::scale(0, model->patch_feats_Test));
+                 p_current_scale, p_current_angle).getUMat(cv::ACCESS_RW).copyTo(MatUtil::scale(0, model->patch_feats_Test));
     
     DEBUG_PRINT(model->patch_feats);
     fft.forward_window(model->patch_feats, model->xf, model->temp);
@@ -137,7 +138,7 @@ static int round_pw2_down(int x)
 }
 
 
-void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int fit_size_y)
+void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int fit_size_y)
 {
     __dbgTracer.debug = m_debug;
     TRACE("");
@@ -245,7 +246,7 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     p_init_pose.cx = x1 + p_init_pose.w / 2.;
     p_init_pose.cy = y1 + p_init_pose.h / 2.;
 
-    cv::Mat input_gray, input_rgb = img.clone();
+    cv::UMat input_gray, input_rgb = img.clone();
     if (img.channels() == 3) {
         cv::cvtColor(img, input_gray, cv::COLOR_BGR2GRAY);
         input_gray.convertTo(input_gray, CV_32FC1);
@@ -346,7 +347,7 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     train(input_rgb, input_gray, 1.0);
 }
 
-void KCF_Tracker::setTrackerPose(BBox_c &bbox, cv::Mat &img, int fit_size_x, int fit_size_y)
+void KCF_Tracker::setTrackerPose(BBox_c &bbox, cv::UMat &img, int fit_size_x, int fit_size_y)
 {
     init(img, bbox.get_rect(), fit_size_x, fit_size_y);
 }
@@ -381,6 +382,13 @@ double KCF_Tracker::getFilterResponse() const
 }
 
 void KCF_Tracker::resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray)
+{
+    if (p_resize_image) {
+        cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+    }
+}
+void KCF_Tracker::resizeImgs(cv::UMat &input_rgb, cv::UMat &input_gray)
 {
     if (p_resize_image) {
         cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
@@ -494,12 +502,12 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
     return max;
 }
 
-void KCF_Tracker::track(cv::Mat &img)
+void KCF_Tracker::track(cv::UMat &img)
 {
     __dbgTracer.debug = m_debug;
     TRACE("");
 
-    cv::Mat input_gray, input_rgb = img.clone();
+    cv::UMat input_gray, input_rgb = img.clone();
     if (img.channels() == 3) {
         cv::cvtColor(img, input_gray, cv::COLOR_BGR2GRAY);
         input_gray.convertTo(input_gray, CV_32FC1);
@@ -557,21 +565,37 @@ void KCF_Tracker::track(cv::Mat &img)
     train(input_rgb, input_gray, p_interp_factor);
 }
 
-void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray)
+void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &input_gray)
 {
     TRACE("");
-
+    
+    cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+    cv::Mat tempGray = input_gray.getMat(cv::ACCESS_RW);
+    
     BIG_BATCH_OMP_PARALLEL_FOR
     for (uint i = 0; i < IF_BIG_BATCH(max.size(), 1); ++i)
     {
-        kcf.get_features(input_rgb, input_gray, &dbg_patch IF_BIG_BATCH([i],),
+        kcf.get_features(tempRgb, tempGray, &dbg_patch IF_BIG_BATCH([i],),
                          kcf.p_current_center.x, kcf.p_current_center.y,
                          kcf.p_windows_size.width, kcf.p_windows_size.height,
                          kcf.p_current_scale * IF_BIG_BATCH(max.scale(i), scale),
                          kcf.p_current_angle + IF_BIG_BATCH(max.angle(i), angle))
                 .copyTo(MatUtil::scale(i, patch_feats));
         DEBUG_PRINT(MatUtil::scale(i, patch_feats));
+        
+        kcf.get_features(tempRgb, tempGray, &dbg_patch IF_BIG_BATCH([i],),
+                         kcf.p_current_center.x, kcf.p_current_center.y,
+                         kcf.p_windows_size.width, kcf.p_windows_size.height,
+                         kcf.p_current_scale * IF_BIG_BATCH(max.scale(i), scale),
+                         kcf.p_current_angle + IF_BIG_BATCH(max.angle(i), angle))
+                .getUMat(cv::ACCESS_RW)
+                .copyTo(MatUtil::scale(i, patch_feats_Test));
+        DEBUG_PRINT(MatUtil::scale(i, patch_feats_Test));
     }
+    
+    // ------------------------------------------------
+    // LAST CHANGE MADE HERE, continue from here...
+    // ------------------------------------------------
 
     kcf.fft.forward_window(patch_feats, zf, temp);
     DEBUG_PRINTM(zf);
@@ -701,10 +725,98 @@ cv::Mat KCF_Tracker::gaussian_shaped_labels(double sigma, int dim1, int dim2)
     return rot_labels;
 }
 
+cv::UMat KCF_Tracker::gaussian_shaped_labels_umat(double sigma, int dim1, int dim2)
+{
+    cv::UMat labels(dim2, dim1, CV_32FC1);
+    int range_y[2] = {-dim2 / 2, dim2 - dim2 / 2};
+    int range_x[2] = {-dim1 / 2, dim1 - dim1 / 2};
+
+    double sigma_s = sigma * sigma;
+
+    for (int y = range_y[0], j = 0; y < range_y[1]; ++y, ++j) {
+        float *row_ptr = labels.getMat(cv::ACCESS_RW).ptr<float>(j);
+        double y_s = y * y;
+        for (int x = range_x[0], i = 0; x < range_x[1]; ++x, ++i) {
+            row_ptr[i] = std::exp(-0.5 * (y_s + x * x) / sigma_s); //-1/2*e^((y^2+x^2)/sigma^2)
+        }
+    }
+
+    // rotate so that 1 is at top-left corner (see KCF paper for explanation)
+    cv::UMat rot_labels = circshift(labels, range_x[0], range_y[0]);
+    // sanity check, 1 at top left corner
+    assert(rot_labels.getMat(cv::ACCESS_READ).at<float>(0, 0) >= 1.f - 1e-10f);
+
+    return rot_labels;
+}
+
 cv::Mat KCF_Tracker::circshift(const cv::Mat &patch, int x_rot, int y_rot) const
 {
     cv::Mat rot_patch(patch.size(), patch.type());
     cv::Mat tmp_x_rot(patch.size(), patch.type());
+
+    // circular rotate x-axis
+    if (x_rot < 0) {
+        // move part that does not rotate over the edge
+        cv::Range orig_range(-x_rot, patch.cols);
+        cv::Range rot_range(0, patch.cols - (-x_rot));
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+
+        // rotated part
+        orig_range = cv::Range(0, -x_rot);
+        rot_range = cv::Range(patch.cols - (-x_rot), patch.cols);
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+    } else if (x_rot > 0) {
+        // move part that does not rotate over the edge
+        cv::Range orig_range(0, patch.cols - x_rot);
+        cv::Range rot_range(x_rot, patch.cols);
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+
+        // rotated part
+        orig_range = cv::Range(patch.cols - x_rot, patch.cols);
+        rot_range = cv::Range(0, x_rot);
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+    } else { // zero rotation
+        // move part that does not rotate over the edge
+        cv::Range orig_range(0, patch.cols);
+        cv::Range rot_range(0, patch.cols);
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+    }
+
+    // circular rotate y-axis
+    if (y_rot < 0) {
+        // move part that does not rotate over the edge
+        cv::Range orig_range(-y_rot, patch.rows);
+        cv::Range rot_range(0, patch.rows - (-y_rot));
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+
+        // rotated part
+        orig_range = cv::Range(0, -y_rot);
+        rot_range = cv::Range(patch.rows - (-y_rot), patch.rows);
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+    } else if (y_rot > 0) {
+        // move part that does not rotate over the edge
+        cv::Range orig_range(0, patch.rows - y_rot);
+        cv::Range rot_range(y_rot, patch.rows);
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+
+        // rotated part
+        orig_range = cv::Range(patch.rows - y_rot, patch.rows);
+        rot_range = cv::Range(0, y_rot);
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+    } else { // zero rotation
+        // move part that does not rotate over the edge
+        cv::Range orig_range(0, patch.rows);
+        cv::Range rot_range(0, patch.rows);
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+    }
+
+    return rot_patch;
+}
+
+cv::UMat KCF_Tracker::circshift(const cv::UMat &patch, int x_rot, int y_rot) const
+{
+    cv::UMat rot_patch(patch.size(), patch.type());
+    cv::UMat tmp_x_rot(patch.size(), patch.type());
 
     // circular rotate x-axis
     if (x_rot < 0) {
