@@ -247,20 +247,24 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
     p_init_pose.cy = y1 + p_init_pose.h / 2.;
 
     cv::UMat input_gray, input_rgb = img.clone();
+        
     if (img.channels() == 3) {
         cv::cvtColor(img, input_gray, cv::COLOR_BGR2GRAY);
         input_gray.convertTo(input_gray, CV_32FC1);
     } else
         img.convertTo(input_gray, CV_32FC1);
-
+    
+    cv::Mat tempGray = input_gray.getMat(cv::ACCESS_RW);
+    cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
     // don't need too large image
     if (p_init_pose.w * p_init_pose.h > 100. * 100.) {
         std::cout << "resizing image by factor of " << 1 / p_downscale_factor << std::endl;
         p_resize_image = true;
         p_init_pose.scale(p_downscale_factor);
-        cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-        cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::resize(tempGray, tempGray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::resize(tempRgb, tempRgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
     }
+    
 
     // compute win size + fit to fhog cell size
     p_windows_size.width = round(p_init_pose.w * (1. + p_padding) / p_cell_size) * p_cell_size;
@@ -390,9 +394,12 @@ void KCF_Tracker::resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray)
 }
 void KCF_Tracker::resizeImgs(cv::UMat &input_rgb, cv::UMat &input_gray)
 {
+    cv::Mat tempGray = input_gray.getMat(cv::ACCESS_RW);
+    cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+    
     if (p_resize_image) {
-        cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-        cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::resize(tempGray, tempGray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::resize(tempRgb, tempRgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
     }
 }
 
@@ -593,12 +600,11 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &inp
         DEBUG_PRINT(MatUtil::scale(i, patch_feats_Test));
     }
     
-    // ------------------------------------------------
-    // LAST CHANGE MADE HERE, continue from here...
-    // ------------------------------------------------
-
     kcf.fft.forward_window(patch_feats, zf, temp);
     DEBUG_PRINTM(zf);
+    
+    kcf.fft.forward_window(patch_feats_Test, zf_Test, temp_Test);
+    DEBUG_PRINTM(zf_Test);
     
     if (kcf.m_use_linearkernel) {
         // Unused feature
@@ -606,10 +612,18 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &inp
         gaussian_correlation(kzf, zf, kcf.model->model_xf, kcf.p_kernel_sigma, false, kcf);
         DEBUG_PRINTM(kzf);
         kzf = MatUtil::mul_matn_mat1(kzf, kcf.model->model_alphaf);
+        
+        gaussian_correlation(kzf_Test, zf_Test, kcf.model->model_xf_Test, kcf.p_kernel_sigma, false, kcf);
+        DEBUG_PRINTM(kzf_Test);
+        kzf_Test = MatUtil::mul_matn_mat1(kzf_Test, kcf.model->model_alphaf_Test);
     }
     DEBUG_PRINTM(kzf);
     kcf.fft.inverse(kzf, response);
     DEBUG_PRINTM(response);
+    
+    DEBUG_PRINTM(kzf_Test);
+    kcf.fft.inverse(kzf_Test, response_Test);
+    DEBUG_PRINTM(response_Test);
     
     /* target location is at the maximum response. we must take into
     account the fact that, if the target doesn't move, the peak
@@ -627,6 +641,14 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &inp
         max[i].loc = max_loc;
     }
 #else    
+    
+    
+    // ------------------------------------------------
+    // LAST CHANGE MADE HERE, continue from here...
+    // ------------------------------------------------
+
+    
+    // _Test EDIT HERE to change which data is used for determining best match of the tracking rectangle
     cv::minMaxLoc(MatUtil::plane(0, response), &min_val, &max_val, &min_loc, &max_loc);
     DEBUG_PRINT(max_loc);
     DEBUG_PRINT(max_val);
