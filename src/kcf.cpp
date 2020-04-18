@@ -641,15 +641,9 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &inp
         max[i].loc = max_loc;
     }
 #else    
-    
-    
-    // ------------------------------------------------
-    // LAST CHANGE MADE HERE, continue from here...
-    // ------------------------------------------------
-
-    
-    // _Test EDIT HERE to change which data is used for determining best match of the tracking rectangle
-    cv::minMaxLoc(MatUtil::plane(0, response), &min_val, &max_val, &min_loc, &max_loc);
+      
+    // _Test EDIT HERE to change which data (response) is used for determining best match of the tracking rectangle
+    cv::minMaxLoc(MatUtil::plane(0, response_Test), &min_val, &max_val, &min_loc, &max_loc);
     DEBUG_PRINT(max_loc);
     DEBUG_PRINT(max_val);
 
