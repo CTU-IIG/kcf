@@ -79,52 +79,35 @@ void KCF_Tracker::train(cv::UMat input_rgb, cv::UMat input_gray, double interp_f
     cv::Mat inputGrayTemp = input_gray.getMat(cv::ACCESS_RW);
     get_features(inputRgbTemp, inputGrayTemp, nullptr, p_current_center.x, p_current_center.y,
                  p_windows_size.width, p_windows_size.height,
-                 p_current_scale, p_current_angle).copyTo(MatUtil::scale(0, model->patch_feats));
-    get_features(inputRgbTemp, inputGrayTemp, nullptr, p_current_center.x, p_current_center.y,
-                 p_windows_size.width, p_windows_size.height,
-                 p_current_scale, p_current_angle).getUMat(cv::ACCESS_RW).copyTo(MatUtil::scale(0, model->patch_feats_Test));
-    
-    DEBUG_PRINT(model->patch_feats);
+                 p_current_scale, p_current_angle).getUMat(cv::ACCESS_RW).copyTo(MatUtil::scale(0, model->patch_feats));
+            
+    DEBUG_PRINT(model->patch_feats);    
     fft.forward_window(model->patch_feats, model->xf, model->temp);
     DEBUG_PRINTM(model->xf);
-    model->model_xf = model->model_xf * (1. - interp_factor) + model->xf * interp_factor;
+    model->model_xf.getMat(cv::ACCESS_RW) = (model->model_xf.getMat(cv::ACCESS_RW) * (1. - interp_factor) + 
+            model->xf.getMat(cv::ACCESS_RW) * interp_factor);
     DEBUG_PRINTM(model->model_xf);
-            
-    DEBUG_PRINT(model->patch_feats_Test);    
-    fft.forward_window(model->patch_feats_Test, model->xf_Test, model->temp_Test);
-    DEBUG_PRINTM(model->xf_Test);
-    model->model_xf_Test.getMat(cv::ACCESS_RW) = (model->model_xf_Test.getMat(cv::ACCESS_RW) * (1. - interp_factor) + 
-            model->xf_Test.getMat(cv::ACCESS_RW) * interp_factor);
-    DEBUG_PRINTM(model->model_xf_Test);
     
     
     if (m_use_linearkernel) {        
-        cv::Mat xfconj = MatUtil::conj(model->xf);
-        model->model_alphaf_num = MatUtil::mul_matn_mat1(xfconj, model->yf);
-        model->model_alphaf_den = MatUtil::mul_matn_matn(model->xf, xfconj);
+        // Unused feature
+        
+//        cv::Mat xfconj = MatUtil::conj(model->xf);
+//        model->model_alphaf_num = MatUtil::mul_matn_mat1(xfconj, model->yf);
+//        model->model_alphaf_den = MatUtil::mul_matn_matn(model->xf, xfconj);
     } else {
         // Kernel Ridge Regression, calculate alphas (in Fourier domain)
         cv::Size sz(Fft::freq_size(feature_size));
-        cv::Mat kf = cv::Mat(sz.height, sz.width, CV_32FC2);
+        cv::UMat kf = cv::UMat(sz.height, sz.width, CV_32FC2);
         (*gaussian_correlation)(kf, model->model_xf, model->model_xf, p_kernel_sigma, true, *this);
-        DEBUG_PRINTM(kf);
+        DEBUG_PRINTM(kf);        
         model->model_alphaf_num = MatUtil::mul_matn_matn(model->yf, kf);
-        cv::Mat addedMat = MatUtil::add_scalar(kf, p_lambda);
+        cv::UMat addedMat = MatUtil::add_scalar(kf, p_lambda);
         model->model_alphaf_den = MatUtil::mul_matn_matn(kf, addedMat);
-        
-        cv::UMat kf_Test = cv::UMat(sz.height, sz.width, CV_32FC2);
-        (*gaussian_correlation)(kf_Test, model->model_xf_Test, model->model_xf_Test, p_kernel_sigma, true, *this);
-        DEBUG_PRINTM(kf_Test);        
-        model->model_alphaf_num_Test = MatUtil::mul_matn_matn(model->yf_Test, kf_Test);
-        cv::UMat addedMat_Test = MatUtil::add_scalar(kf_Test, p_lambda);
-        model->model_alphaf_den_Test = MatUtil::mul_matn_matn(kf_Test, addedMat_Test);
 
     }
     model->model_alphaf = MatUtil::divide_matn_matn(model->model_alphaf_num, model->model_alphaf_den);
     DEBUG_PRINTM(model->model_alphaf);
-    
-    model->model_alphaf_Test = MatUtil::divide_matn_matn(model->model_alphaf_num_Test, model->model_alphaf_den_Test);
-    DEBUG_PRINTM(model->model_alphaf_Test);
     //        p_model_alphaf = p_yf / (kf + p_lambda);   //equation for fast training
 
 }
@@ -333,19 +316,17 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
            * p_output_sigma_factor / p_cell_size;
 
     fft.init(feature_size.width, feature_size.height, p_num_of_feats, p_num_scales * p_num_angles);
-    fft.set_window(cosine_window_function(feature_size.width, feature_size.height));
     fft.set_window(cosine_window_function_umat(feature_size.width, feature_size.height));
 
     // window weights, i.e. labels
     cv::Mat gsl(feature_size,CV_32F);
     gaussian_shaped_labels(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl);
-    cv::UMat gsl_Test = gsl.getUMat(cv::ACCESS_RW);
+    cv::UMat gslUmat = gsl.getUMat(cv::ACCESS_RW);
+//gaussian_shaped_labels_umat(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl);
     
-    fft.forward(gsl, model->yf);
-    fft.forward(gsl_Test, model->yf_Test);
+    fft.forward(gslUmat, model->yf);
     
     DEBUG_PRINTM(model->yf);
-    DEBUG_PRINTM(model->yf_Test);
     
     // train initial model
     train(input_rgb, input_gray, 1.0);
@@ -442,8 +423,8 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
 //    cv::Mat max_response_map    = IF_BIG_BATCH(d->threadctxs[0].response.plane(max_idx),
 //                                               max_it->response.plane(0));
     
-    cv::Mat tempResponse = IF_BIG_BATCH(cv::Mat(), max_it->response);
-    cv::Mat max_response_map = IF_BIG_BATCH(MatUtil::plane(max_idx, d->threadctxs[0].response),
+    cv::Mat tempResponse = IF_BIG_BATCH(cv::Mat(), max_it->response.getMat(cv::ACCESS_RW));
+    cv::Mat max_response_map = IF_BIG_BATCH(MatUtil::plane(max_idx, d->threadctxs[0].response.getMat(cv::ACCESS_RW)),
                                                MatUtil::plane(0, tempResponse));
     
     
@@ -587,24 +568,13 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &inp
                          kcf.p_windows_size.width, kcf.p_windows_size.height,
                          kcf.p_current_scale * IF_BIG_BATCH(max.scale(i), scale),
                          kcf.p_current_angle + IF_BIG_BATCH(max.angle(i), angle))
+                .getUMat(cv::ACCESS_RW)
                 .copyTo(MatUtil::scale(i, patch_feats));
         DEBUG_PRINT(MatUtil::scale(i, patch_feats));
-        
-        kcf.get_features(tempRgb, tempGray, &dbg_patch IF_BIG_BATCH([i],),
-                         kcf.p_current_center.x, kcf.p_current_center.y,
-                         kcf.p_windows_size.width, kcf.p_windows_size.height,
-                         kcf.p_current_scale * IF_BIG_BATCH(max.scale(i), scale),
-                         kcf.p_current_angle + IF_BIG_BATCH(max.angle(i), angle))
-                .getUMat(cv::ACCESS_RW)
-                .copyTo(MatUtil::scale(i, patch_feats_Test));
-        DEBUG_PRINT(MatUtil::scale(i, patch_feats_Test));
     }
     
     kcf.fft.forward_window(patch_feats, zf, temp);
     DEBUG_PRINTM(zf);
-    
-    kcf.fft.forward_window(patch_feats_Test, zf_Test, temp_Test);
-    DEBUG_PRINTM(zf_Test);
     
     if (kcf.m_use_linearkernel) {
         // Unused feature
@@ -612,18 +582,10 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &inp
         gaussian_correlation(kzf, zf, kcf.model->model_xf, kcf.p_kernel_sigma, false, kcf);
         DEBUG_PRINTM(kzf);
         kzf = MatUtil::mul_matn_mat1(kzf, kcf.model->model_alphaf);
-        
-        gaussian_correlation(kzf_Test, zf_Test, kcf.model->model_xf_Test, kcf.p_kernel_sigma, false, kcf);
-        DEBUG_PRINTM(kzf_Test);
-        kzf_Test = MatUtil::mul_matn_mat1(kzf_Test, kcf.model->model_alphaf_Test);
     }
     DEBUG_PRINTM(kzf);
     kcf.fft.inverse(kzf, response);
     DEBUG_PRINTM(response);
-    
-    DEBUG_PRINTM(kzf_Test);
-    kcf.fft.inverse(kzf_Test, response_Test);
-    DEBUG_PRINTM(response_Test);
     
     /* target location is at the maximum response. we must take into
     account the fact that, if the target doesn't move, the peak
@@ -642,8 +604,8 @@ void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &inp
     }
 #else    
       
-    // _Test EDIT HERE to change which data (response) is used for determining best match of the tracking rectangle
-    cv::minMaxLoc(MatUtil::plane(0, response_Test), &min_val, &max_val, &min_loc, &max_loc);
+    //  EDIT HERE to change which data (response) is used for determining best match of the tracking rectangle
+    cv::minMaxLoc(MatUtil::plane(0, response), &min_val, &max_val, &min_loc, &max_loc);
     DEBUG_PRINT(max_loc);
     DEBUG_PRINT(max_val);
 
@@ -988,11 +950,12 @@ cv::Mat KCF_Tracker::get_subwindow(const cv::Mat &input, int cx, int cy, int wid
     return patch;
 }
 
-void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, cv::Mat &yf,
+void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf, cv::UMat &yf,
                                                   double sigma, bool auto_correlation, const KCF_Tracker &kcf)
 {
     TRACE("");
     DEBUG_PRINTM(xf);
+    
     xf_sqr_norm = MatUtil::sqr_norm(xf);
     DEBUG_PRINT(xf_sqr_norm);
     
@@ -1004,56 +967,19 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::Mat &result, cv::Mat &xf, 
     }
     DEBUG_PRINT(yf_sqr_norm);
     
-    cv::Mat conjMat = MatUtil::conj(yf);   
+    cv::UMat conjMat = MatUtil::conj(yf);   
     xyf = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
     DEBUG_PRINTM(xyf);
 
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
-    cv::Mat xyf_sum = MatUtil::sum_over_channels(xyf);
+    cv::UMat xyf_sum = MatUtil::sum_over_channels(xyf);
     DEBUG_PRINTM(xyf_sum);
     kcf.fft.inverse(xyf_sum, ifft_res);
     DEBUG_PRINTM(ifft_res);
 
     float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
-    cv::Mat plane = MatUtil::plane(0,ifft_res);
-    DEBUG_PRINTM(plane);
-    cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm + yf_sqr_norm - 2 * MatUtil::plane(0,ifft_res))
-            * numel_xf_inv, 0), plane);
-    DEBUG_PRINTM(plane);
-
-    kcf.fft.forward(MatUtil::plane(0,ifft_res), result);
-}
-
-void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf, cv::UMat &yf,
-                                                  double sigma, bool auto_correlation, const KCF_Tracker &kcf)
-{
-    TRACE("");
-    DEBUG_PRINTM(xf);
     
-    xf_sqr_norm_Test = MatUtil::sqr_norm(xf);
-    DEBUG_PRINT(xf_sqr_norm_Test);
-    
-    if (auto_correlation) {
-        yf_sqr_norm_Test = xf_sqr_norm_Test;
-    } else {
-        DEBUG_PRINTM(yf);
-        yf_sqr_norm_Test = MatUtil::sqr_norm(yf);
-    }
-    DEBUG_PRINT(yf_sqr_norm_Test);
-    
-    cv::UMat conjMat = MatUtil::conj(yf);   
-    xyf_Test = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
-    DEBUG_PRINTM(xyf_Test);
-
-    // ifft2 and sum over 3rd dimension, we dont care about individual channels
-    cv::UMat xyf_sum = MatUtil::sum_over_channels(xyf_Test);
-    DEBUG_PRINTM(xyf_sum);
-    kcf.fft.inverse(xyf_sum, ifft_res_Test);
-    DEBUG_PRINTM(ifft_res_Test);
-
-    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
-    
-    cv::Mat ifft_res_Temp = ifft_res_Test.getMat(cv::ACCESS_RW);    
+    cv::Mat ifft_res_Temp = ifft_res.getMat(cv::ACCESS_RW);    
     cv::Mat plane = MatUtil::plane(0,ifft_res_Temp);
     DEBUG_PRINTM(plane);
     
@@ -1064,14 +990,14 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf
 //    --------------------------------------------------
 //    cv::UMat tempPlane = plane.clone();
 //    cv::multiply(tempPlane, -2, tempPlane);
-//    cv::add(tempPlane, xf_sqr_norm_Test + yf_sqr_norm_Test, tempPlane);
+//    cv::add(tempPlane, xf_sqr_norm + yf_sqr_norm, tempPlane);
 //    cv::multiply(tempPlane, numel_xf_inv, tempPlane);
 //    cv::max(tempPlane, 0, tempPlane);
 //    cv::multiply(tempPlane, (-1. / (sigma * sigma)) , tempPlane);
 //    cv::exp(tempPlane, plane);
     DEBUG_PRINTM(plane);
 
-    kcf.fft.forward(MatUtil::plane(0,ifft_res_Test), result);
+    kcf.fft.forward(MatUtil::plane(0,ifft_res), result);
 }
 
 float get_response_circular(cv::Point2i &pt, cv::Mat &response)

@@ -80,7 +80,6 @@ public:
     // Init/re-init methods
     void init(cv::UMat & img, const cv::Rect & bbox, int fit_size_x = -1, int fit_size_y = -1);
     void setTrackerPose(BBox_c & bbox, cv::UMat & img, int fit_size_x = -1, int fit_size_y = -1);
-    void setTrackerPose(BBox_c & bbox, cv::Mat & img, int fit_size_x = -1, int fit_size_y = -1);
     void updateTrackerPosition(BBox_c & bbox);
 
     // frame-to-frame object tracking
@@ -136,26 +135,15 @@ private:
     public:
         
         // Complex matrix now equals 2*k channels matrix by design
-        cv::Mat yf = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
-        cv::Mat model_alphaf = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
-        cv::Mat model_alphaf_num = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
-        cv::Mat model_alphaf_den = cv::Mat::zeros((int) height, (int) width, CV_32FC2);
-        cv::Mat model_xf = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
-        cv::Mat xf = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
+        cv::UMat yf = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
+        cv::UMat model_alphaf = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
+        cv::UMat model_alphaf_num = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
+        cv::UMat model_alphaf_den = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
+        cv::UMat model_xf;
+        cv::UMat xf;
 
-        cv::Mat patch_feats{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
-        cv::Mat temp{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
-        
-        
-        cv::UMat yf_Test = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
-        cv::UMat model_alphaf_Test = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
-        cv::UMat model_alphaf_num_Test = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
-        cv::UMat model_alphaf_den_Test = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
-        cv::UMat model_xf_Test;
-        cv::UMat xf_Test;
-
-        cv::UMat patch_feats_Test{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
-        cv::UMat temp_Test{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
+        cv::UMat patch_feats{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
+        cv::UMat temp{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
         
         
         Model(cv::Size feature_size, uint _n_feats)
@@ -166,8 +154,8 @@ private:
             
         cv::Mat model_xf_temp = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
         cv::Mat xf_temp = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
-        model_xf_Test = model_xf_temp.getUMat(cv::ACCESS_RW);
-        xf_Test = xf_temp.getUMat(cv::ACCESS_RW);
+        model_xf = model_xf_temp.getUMat(cv::ACCESS_RW);
+        xf = xf_temp.getUMat(cv::ACCESS_RW);
         }
     };
 
@@ -178,29 +166,18 @@ private:
         GaussianCorrelation(uint num_scales, uint num_feats, cv::Size size)
         {
                 cv::Size temp = Fft::freq_size(size);
-                xyf = cv::Mat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
-                ifft_res = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
-                k = cv::Mat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
-                
-                xyf_Test = cv::UMat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
-                ifft_res_Test = cv::UMat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
-                k_Test = cv::UMat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
+                xyf = cv::UMat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
+                ifft_res = cv::UMat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
+                k = cv::UMat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
             }
-        void operator()(cv::Mat &result, cv::Mat &xf, cv::Mat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
         void operator()(cv::UMat &result, cv::UMat &xf, cv::UMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
 
       private:
         float xf_sqr_norm;
         float yf_sqr_norm;
-        cv::Mat xyf;
-        cv::Mat ifft_res;
-        cv::Mat k;
-        
-        float xf_sqr_norm_Test;
-        float yf_sqr_norm_Test;
-        cv::UMat xyf_Test;
-        cv::UMat ifft_res_Test;
-        cv::UMat k_Test;
+        cv::UMat xyf;
+        cv::UMat ifft_res;
+        cv::UMat k;
     };
 
     //helping functions

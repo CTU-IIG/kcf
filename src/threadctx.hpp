@@ -55,10 +55,10 @@ struct ThreadCtx {
             cv::Mat tmp{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
             cv::Mat zf_Tmp = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
             cv::Mat resp = cv::Mat::zeros(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
-            patch_feats_Test = patch_feat.getUMat(cv::ACCESS_RW);
-            temp_Test = tmp.getUMat(cv::ACCESS_RW);
-            zf_Test = zf_Tmp.getUMat(cv::ACCESS_RW);
-            response_Test = resp.getUMat(cv::ACCESS_RW);
+            patch_feats = patch_feat.getUMat(cv::ACCESS_RW);
+            temp = tmp.getUMat(cv::ACCESS_RW);
+            zf = zf_Tmp.getUMat(cv::ACCESS_RW);
+            response = resp.getUMat(cv::ACCESS_RW);
         }
 #endif
 
@@ -73,15 +73,10 @@ private:
     uint num_angles;
     cv::Size freq_size = Fft::freq_size(roi);
 
-    cv::Mat patch_feats{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
-    cv::Mat temp{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
-    cv::Mat zf = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
-    cv::Mat kzf = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
-    
-    cv::UMat patch_feats_Test;
-    cv::UMat temp_Test;
-    cv::UMat zf_Test;
-    cv::UMat kzf_Test = cv::UMat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
+    cv::UMat patch_feats;
+    cv::UMat temp;
+    cv::UMat zf;
+    cv::UMat kzf = cv::UMat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
     
     KCF_Tracker::GaussianCorrelation gaussian_correlation{num_scales * num_angles, num_features, roi};
     
@@ -91,8 +86,7 @@ public:
     std::future<void> async_res;
 #endif
 
-    cv::Mat response = cv::Mat(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
-    cv::UMat response_Test;
+    cv::UMat response;
 
     struct Max {
         cv::Point2i loc;
