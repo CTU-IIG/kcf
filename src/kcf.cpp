@@ -1058,15 +1058,23 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf
     DEBUG_PRINTM(ifft_res_Test);
 
     float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
-    cv::UMat plane = MatUtil::plane(0,ifft_res_Test);
+    
+    cv::Mat ifft_res_Temp = ifft_res_Test.getMat(cv::ACCESS_RW);    
+    cv::Mat plane = MatUtil::plane(0,ifft_res_Temp);
     DEBUG_PRINTM(plane);
-    cv::UMat tempPlane = plane.clone();
-    cv::multiply(tempPlane, -2, tempPlane);
-    cv::add(tempPlane, xf_sqr_norm_Test + yf_sqr_norm_Test, tempPlane);
-    cv::multiply(tempPlane, numel_xf_inv, tempPlane);
-    cv::max(tempPlane, 0, tempPlane);
-    cv::multiply(tempPlane, (-1. / (sigma * sigma)) , tempPlane);
-    cv::exp(tempPlane, plane);
+    
+    cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm + yf_sqr_norm - 2 * MatUtil::plane(0,ifft_res_Temp))
+            * numel_xf_inv, 0), plane);
+    
+//    This seems to produce slightly inaccurate results
+//    --------------------------------------------------
+//    cv::UMat tempPlane = plane.clone();
+//    cv::multiply(tempPlane, -2, tempPlane);
+//    cv::add(tempPlane, xf_sqr_norm_Test + yf_sqr_norm_Test, tempPlane);
+//    cv::multiply(tempPlane, numel_xf_inv, tempPlane);
+//    cv::max(tempPlane, 0, tempPlane);
+//    cv::multiply(tempPlane, (-1. / (sigma * sigma)) , tempPlane);
+//    cv::exp(tempPlane, plane);
     DEBUG_PRINTM(plane);
 
     kcf.fft.forward(MatUtil::plane(0,ifft_res_Test), result);
