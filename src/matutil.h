@@ -194,19 +194,21 @@ static cv::UMat channel_to_cv_mat(int channel_id, cv::UMat &host){
  * Returns complex matrix, where every element is result of formula (hostElem.real() )^2 + (hostElem.imag() )^2
 **/
 static cv::Mat sqr_mag(cv::Mat &host){
-    return mat_const_operator([](std::complex<float> &c, const int * position) { c = c.real() * c.real() + c.imag() * c.imag(); (void)position;}, host);
+//    return mat_const_operator_Test([](std::complex<float> &c, const int * position) { c = c.real() * c.real() + c.imag() * c.imag(); (void)position;}, host);
+    return mat_const_operator([](std::complex<float> &c) { c = c.real() * c.real() + c.imag() * c.imag(); }, host);
 }
 static cv::UMat sqr_mag(cv::UMat &host){
-    return mat_const_operator([](std::complex<float> &c, const int * position) { c = c.real() * c.real() + c.imag() * c.imag(); (void)position;}, host);
+//    return mat_const_operator_Test([](std::complex<float> &c, const int * position) { c = c.real() * c.real() + c.imag() * c.imag(); (void)position;}, host);
+    return mat_const_operator([](std::complex<float> &c) { c = c.real() * c.real() + c.imag() * c.imag(); }, host);
 }
 /*
  * Returns copy of input complex matrix, where every imaginary value is inverted
 **/
 static cv::Mat conj(cv::Mat &host){
-    return mat_const_operator([](std::complex<float> &c, const int * position) { c = std::complex<float>(c.real(), -c.imag()); (void)position;}, host);
+    return mat_const_operator([](std::complex<float> &c) { c = std::complex<float>(c.real(), -c.imag()); }, host);
 }
 static cv::UMat conj(cv::UMat &host){
-    return mat_const_operator([](std::complex<float> &c, const int * position) { c = std::complex<float>(c.real(), -c.imag()); (void)position;}, host);
+    return mat_const_operator([](std::complex<float> &c) { c = std::complex<float>(c.real(), -c.imag()); }, host);
 }
 
 /*
@@ -233,10 +235,10 @@ static cv::UMat mul_matn_matn(cv::UMat &host, cv::UMat &other){
  * Returns result of element wise addition to complex matrix
 **/
 static cv::Mat add_scalar(cv::Mat &host, const float &val){
-    return mat_const_operator([&val](std::complex<float> &c, const int * position) { c += val; (void)position;}, host);
+    return mat_const_operator([&val](std::complex<float> &c) { c += val; }, host);
 }
 static cv::UMat add_scalar(cv::UMat &host, const float &val){
-    return mat_const_operator([&val](std::complex<float> &c, const int * position) { c += val; (void)position;}, host);
+    return mat_const_operator([&val](std::complex<float> &c) { c += val; }, host);
 }
 
 /*
@@ -253,19 +255,60 @@ static cv::UMat divide_matn_matn(cv::UMat &host, cv::UMat &other){
  * Helper function to iterate through an input complex matrix.
  * Creates copy of the matrix, executes supplied function on each element, then returns the copy.
 **/
-static cv::Mat mat_const_operator(const std::function<void (std::complex<float> &, const int *)> &op, cv::Mat &host){
+static cv::Mat mat_const_operator(const std::function<void (std::complex<float> &)> &op, cv::Mat &host){
     assert(host.channels() % 2 == 0);
+    assert(host.rows > 0);
+    assert(host.cols > 0);
     cv::Mat result = host.clone();
-    result.forEach< std::complex<float> >(op);
+    for (int i = 0; i < result.rows; ++i) {
+        for (int j = 0; j < result.cols; ++j){
+            for (int k = 0; k < result.channels() / 2 ; ++k){
+                std::complex<float> cpxVal = result.ptr<std::complex<float>>(i)[(result.channels() / 2)*j + k];
+//                DEBUG_PRINTM(cpxVal);
+                op(cpxVal);
+//                DEBUG_PRINTM(cpxVal);
+//                DEBUG_PRINTM("did");
+                result.ptr<std::complex<float>>(i)[(result.channels() / 2)*j + k] = cpxVal;
+            }
+        }
+    }
     return result;
 }
-static cv::UMat mat_const_operator(const std::function<void (std::complex<float> &, const int *)> &op, cv::UMat &host){
+static cv::UMat mat_const_operator(const std::function<void (std::complex<float> &)> &op, cv::UMat &host){
     assert(host.channels() % 2 == 0);
+    assert(host.rows > 0);
+    assert(host.cols > 0);
     cv::UMat result = host.clone();
     cv::Mat tempResult = result.getMat(cv::ACCESS_RW);
-    tempResult.forEach< std::complex<float> >(op);
+    for (int i = 0; i < tempResult.rows; ++i) {
+        for (int j = 0; j < tempResult.cols; ++j){
+            for (int k = 0; k < tempResult.channels() / 2 ; ++k){
+                std::complex<float> cpxVal = tempResult.ptr<std::complex<float>>(i)[(tempResult.channels() / 2)*j + k];
+                op(cpxVal);
+                tempResult.ptr<std::complex<float>>(i)[(tempResult.channels() / 2)*j + k] = cpxVal;
+            }
+        }
+    }
     return result;
 }
+
+//static cv::Mat mat_const_operator_Test(const std::function<void (std::complex<float> &, const int *)> &op, cv::Mat &host){
+//    assert(host.channels() % 2 == 0);
+//    assert(host.rows > 0);
+//    assert(host.cols > 0);
+//    cv::Mat result = host.clone();
+//    result.forEach< std::complex<float> >(op);
+//    return result;
+//}
+//static cv::UMat mat_const_operator_Test(const std::function<void (std::complex<float> &, const int *)> &op, cv::UMat &host){
+//    assert(host.channels() % 2 == 0);
+//    assert(host.rows > 0);
+//    assert(host.cols > 0);
+//    cv::UMat result = host.clone();
+//    cv::Mat tempResult = result.getMat(cv::ACCESS_RW);
+//    tempResult.forEach< std::complex<float> >(op);
+//    return result;
+//}
 
 /*
  * Helper function to iterate through n-channeled and single-channeled complex matrixes.

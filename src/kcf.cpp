@@ -176,10 +176,6 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    testAdd.ptr<float>(1)[5] = float(1);
 //    testAdd.ptr<float>(1)[6] = float(1);
 //    testAdd.ptr<float>(1)[7] = float(1);
-//    
-//    testAdd.forEach< std::complex<float> >([](std::complex<float> &c, const int * position) { c += 2; (void)position;});
-//    DEBUG_PRINTM(testAdd);
-//    return; 
 //
 //    cv::GMat in;  
 //    cv::GMat inAdd;   
@@ -1034,7 +1030,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf
     
     cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm + yf_sqr_norm - 2 * MatUtil::plane(0,ifft_res_Temp))
             * numel_xf_inv, 0), plane);
-
+    
     DEBUG_PRINTM(plane);
 
     kcf.fft.forward(MatUtil::plane(0,ifft_res), result);
