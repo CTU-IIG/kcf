@@ -134,9 +134,9 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    cv::UMat test = test2.getUMat(cv::ACCESS_RW);
 //    DEBUG_PRINTM(test);
 //    std::vector<int> dims = std::vector<int>({2, 2, 2});
-//    std::vector<int> dims2 = std::vector<int>({2, 2, 2});
+    std::vector<int> dims2 = std::vector<int>({2, 2, 2});
 //    cv::Mat test = cv::Mat(dims, CV_32FC2);
-//    cv::Mat testAdd = cv::Mat(dims2, CV_32FC2);
+    cv::Mat testAdd = cv::Mat(dims2, CV_32FC2);
 //
 //    cv::UMat testPl = cv::UMat(test.size[1], test.size[2], test.type(), test.getMat(cv::ACCESS_RW).ptr<float>(0));
 //    
@@ -160,22 +160,26 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    test.ptr<float>(1)[6] = float(15);
 //    test.ptr<float>(1)[7] = float(16);
 //    
-//    testAdd.ptr<float>(0)[0] = float(1);
-//    testAdd.ptr<float>(0)[1] = float(1);
-//    testAdd.ptr<float>(0)[2] = float(1);
-//    testAdd.ptr<float>(0)[3] = float(1);
-//    testAdd.ptr<float>(0)[4] = float(1);
-//    testAdd.ptr<float>(0)[5] = float(1);
-//    testAdd.ptr<float>(0)[6] = float(1);
-//    testAdd.ptr<float>(0)[7] = float(1);
-//    testAdd.ptr<float>(1)[0] = float(1);
-//    testAdd.ptr<float>(1)[1] = float(1);
-//    testAdd.ptr<float>(1)[2] = float(1);
-//    testAdd.ptr<float>(1)[3] = float(1);
-//    testAdd.ptr<float>(1)[4] = float(1);
-//    testAdd.ptr<float>(1)[5] = float(1);
-//    testAdd.ptr<float>(1)[6] = float(1);
-//    testAdd.ptr<float>(1)[7] = float(1);
+    testAdd.ptr<float>(0)[0] = float(1);
+    testAdd.ptr<float>(0)[1] = float(1);
+    testAdd.ptr<float>(0)[2] = float(1);
+    testAdd.ptr<float>(0)[3] = float(1);
+    testAdd.ptr<float>(0)[4] = float(1);
+    testAdd.ptr<float>(0)[5] = float(1);
+    testAdd.ptr<float>(0)[6] = float(1);
+    testAdd.ptr<float>(0)[7] = float(1);
+    testAdd.ptr<float>(1)[0] = float(1);
+    testAdd.ptr<float>(1)[1] = float(1);
+    testAdd.ptr<float>(1)[2] = float(1);
+    testAdd.ptr<float>(1)[3] = float(1);
+    testAdd.ptr<float>(1)[4] = float(1);
+    testAdd.ptr<float>(1)[5] = float(1);
+    testAdd.ptr<float>(1)[6] = float(1);
+    testAdd.ptr<float>(1)[7] = float(1);
+    
+    testAdd.forEach< std::complex<float> >([](std::complex<float> &c, const int * position) { c += 2; (void)position;});
+    DEBUG_PRINTM(testAdd);
+    return; 
 //
 //    cv::GMat in;  
 //    cv::GMat inAdd;   
@@ -1030,16 +1034,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf
     
     cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm + yf_sqr_norm - 2 * MatUtil::plane(0,ifft_res_Temp))
             * numel_xf_inv, 0), plane);
-    
-//    This seems to produce slightly inaccurate results
-//    --------------------------------------------------
-//    cv::UMat tempPlane = plane.clone();
-//    cv::multiply(tempPlane, -2, tempPlane);
-//    cv::add(tempPlane, xf_sqr_norm + yf_sqr_norm, tempPlane);
-//    cv::multiply(tempPlane, numel_xf_inv, tempPlane);
-//    cv::max(tempPlane, 0, tempPlane);
-//    cv::multiply(tempPlane, (-1. / (sigma * sigma)) , tempPlane);
-//    cv::exp(tempPlane, plane);
+
     DEBUG_PRINTM(plane);
 
     kcf.fft.forward(MatUtil::plane(0,ifft_res), result);
