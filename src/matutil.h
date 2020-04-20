@@ -88,43 +88,45 @@ static void set_channel(int idxFrom, int idxTo, cv::UMat &source, cv::UMat &targ
 }
 
 /*
+ * REPLACED BY OPENCV IMPLEMENTATION
+ * ------------------------------------
  * Computes sum of results from formula ((real)^2 + (imag)^2) 
  * for every complex element of the input matrix.
 **/ 
-static float sqr_norm(const cv::Mat &host)
-{
-    assert(host.channels() % 2 == 0);
-    float sum_sqr_norm = 0;
-
-    for (int row = 0; row < host.rows; ++row){
-        for (int col = 0; col < host.cols; ++col){
-            for (int ch = 0; ch < host.channels() / 2; ++ch){
-                std::complex<float> cpxVal = host.ptr<std::complex<float>>(row)[(host.channels() / 2)*col + ch];
-                sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
-            }
-        }
-    }
-    sum_sqr_norm = sum_sqr_norm / static_cast<float>(host.rows * host.cols);
-    return sum_sqr_norm;
-}
-static float sqr_norm(const cv::UMat &host)
-{
-    assert(host.channels() % 2 == 0);
-    float sum_sqr_norm = 0;
-    cv::Mat tempHost = host.getMat(cv::ACCESS_READ);
-
-    for (int row = 0; row < host.rows; ++row){
-        for (int col = 0; col < host.cols; ++col){
-            for (int ch = 0; ch < host.channels() / 2; ++ch){
-                std::complex<float> cpxVal = tempHost.ptr<std::complex<float>>(row)
-                [(host.channels() / 2)*col + ch];
-                sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
-            }
-        }
-    }
-    sum_sqr_norm = sum_sqr_norm / static_cast<float>(host.rows * host.cols);
-    return sum_sqr_norm;
-}
+//static double sqr_norm(const cv::Mat &host)
+//{
+//    assert(host.channels() % 2 == 0);
+//    double sum_sqr_norm = 0;
+//
+//    for (int row = 0; row < host.rows; ++row){
+//        for (int col = 0; col < host.cols; ++col){
+//            for (int ch = 0; ch < host.channels() / 2; ++ch){
+//                std::complex<double> cpxVal = host.ptr<std::complex<double>>(row)[(host.channels() / 2)*col + ch];
+//                sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
+//            }
+//        }
+//    }
+//    sum_sqr_norm = sum_sqr_norm / static_cast<double>(host.rows * host.cols);
+//    return sum_sqr_norm;
+//}
+//static float sqr_norm(const cv::UMat &host)
+//{
+//    assert(host.channels() % 2 == 0);
+//    float sum_sqr_norm = 0;
+//    cv::Mat tempHost = host.getMat(cv::ACCESS_READ);
+//
+//    for (int row = 0; row < host.rows; ++row){
+//        for (int col = 0; col < host.cols; ++col){
+//            for (int ch = 0; ch < host.channels() / 2; ++ch){
+//                std::complex<float> cpxVal = tempHost.ptr<std::complex<float>>(row)
+//                [(host.channels() / 2)*col + ch];
+//                sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
+//            }
+//        }
+//    }
+//    sum_sqr_norm = sum_sqr_norm / static_cast<float>(host.rows * host.cols);
+//    return sum_sqr_norm;
+//}
 
 /*
  * Sum of channel values for each point of input matrix 

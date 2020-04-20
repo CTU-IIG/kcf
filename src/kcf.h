@@ -173,8 +173,8 @@ private:
         void operator()(cv::UMat &result, cv::UMat &xf, cv::UMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
 
       private:
-        float xf_sqr_norm;
-        float yf_sqr_norm;
+        double xf_sqr_norm;
+        double yf_sqr_norm;
         cv::UMat xyf;
         cv::UMat ifft_res;
         cv::UMat k;

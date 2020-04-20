@@ -9,6 +9,9 @@
 #include "debug.h"
 #include <limits>
 #include <opencv/highgui.h>
+#include <opencv2/gapi.hpp>
+#include <opencv2/gapi/core.hpp>
+#include <opencv2/gapi/imgproc.hpp>
 
 #ifdef OPENMP
 #include <omp.h>
@@ -130,37 +133,79 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    DEBUG_PRINTM(test2);
 //    cv::UMat test = test2.getUMat(cv::ACCESS_RW);
 //    DEBUG_PRINTM(test);
-//    cv::UMat test = cv::UMat(3, std::vector<int>({2, 2, 2}).data(), CV_32FC2, float(5));
-//    cv::UMat testPl = cv::UMat(test.size[1], test.size[2], test.type(), test.ptr<float>(0));
-    
+//    std::vector<int> dims = std::vector<int>({2, 2, 2});
+//    std::vector<int> dims2 = std::vector<int>({2, 2, 2});
+//    cv::Mat test = cv::Mat(dims, CV_32FC2);
+//    cv::Mat testAdd = cv::Mat(dims2, CV_32FC2);
+//
+//    cv::UMat testPl = cv::UMat(test.size[1], test.size[2], test.type(), test.getMat(cv::ACCESS_RW).ptr<float>(0));
+//    
 //    
 ////    cv::Mat_<std::complex<float>> testComplex = cv::Mat_<std::complex<float>>(test2);
 //    
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[0] = float(1);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[1] = float(2);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[2] = float(3);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[3] = float(4);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[4] = float(5);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[5] = float(6);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[6] = float(7);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(0)[7] = float(8);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[0] = float(9);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[1] = float(10);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[2] = float(11);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[3] = float(12);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[4] = float(13);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[5] = float(14);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[6] = float(15);
-//    test.getMat(cv::ACCESS_WRITE).ptr<float>(1)[7] = float(16);
-    
-    
+//    test.ptr<float>(0)[0] = float(1);
+//    test.ptr<float>(0)[1] = float(2);
+//    test.ptr<float>(0)[2] = float(3);
+//    test.ptr<float>(0)[3] = float(4);
+//    test.ptr<float>(0)[4] = float(5);
+//    test.ptr<float>(0)[5] = float(6);
+//    test.ptr<float>(0)[6] = float(7);
+//    test.ptr<float>(0)[7] = float(8);
+//    test.ptr<float>(1)[0] = float(9);
+//    test.ptr<float>(1)[1] = float(10);
+//    test.ptr<float>(1)[2] = float(11);
+//    test.ptr<float>(1)[3] = float(12);
+//    test.ptr<float>(1)[4] = float(13);
+//    test.ptr<float>(1)[5] = float(14);
+//    test.ptr<float>(1)[6] = float(15);
+//    test.ptr<float>(1)[7] = float(16);
 //    
-//    cv::Mat matTest = cv::Mat(test.size[1], test.size[2], test.type(), test.getMat(cv::ACCESS_READ).ptr<float>(1));
-//    cv::UMat testPl = matTest.getUMat(cv::ACCESS_RW);
-//    cv::UMat test2 = cv::UMat(2,2,CV_32FC2,float(6));
+//    testAdd.ptr<float>(0)[0] = float(1);
+//    testAdd.ptr<float>(0)[1] = float(1);
+//    testAdd.ptr<float>(0)[2] = float(1);
+//    testAdd.ptr<float>(0)[3] = float(1);
+//    testAdd.ptr<float>(0)[4] = float(1);
+//    testAdd.ptr<float>(0)[5] = float(1);
+//    testAdd.ptr<float>(0)[6] = float(1);
+//    testAdd.ptr<float>(0)[7] = float(1);
+//    testAdd.ptr<float>(1)[0] = float(1);
+//    testAdd.ptr<float>(1)[1] = float(1);
+//    testAdd.ptr<float>(1)[2] = float(1);
+//    testAdd.ptr<float>(1)[3] = float(1);
+//    testAdd.ptr<float>(1)[4] = float(1);
+//    testAdd.ptr<float>(1)[5] = float(1);
+//    testAdd.ptr<float>(1)[6] = float(1);
+//    testAdd.ptr<float>(1)[7] = float(1);
+//
+//    cv::GMat in;  
+//    cv::GMat inAdd;   
+//    cv::GMat out = cv::gapi::add(in,inAdd);
+//    cv::GComputation ac(cv::GIn(in, inAdd), cv::GOut(out));
+//    
+//    
+//    cv::Mat tmp1 = cv::Mat(2, 2, CV_32FC2, test.ptr<float>(0));
+//    cv::Mat tmp2 = cv::Mat(2, 2, CV_32FC2, testAdd.ptr<float>(0));
+//    cv::Mat tmp3 = cv::Mat::zeros(2, 2, CV_32FC2);
+//    
+//    DEBUG_PRINTM(tmp3);
+//    ac.apply(cv::gin(tmp1,tmp2), cv::gout(tmp3));
+//    DEBUG_PRINTM(tmp1);
+//    DEBUG_PRINTM(tmp2);
+//    DEBUG_PRINTM(tmp3);
+//    
+//    cv::Mat tmp4 = test.getMat(cv::ACCESS_WRITE);
+//    cv::Mat tmp5 = testAdd.getMat(cv::ACCESS_WRITE);
+//    std::vector<int> dims3 = std::vector<int>({2, 2, 2});
+//    cv::Mat tmp6 = cv::Mat(dims3, CV_32FC2);
 //    DEBUG_PRINTM(test);
-//    DEBUG_PRINTM(testPl);
-//    DEBUG_PRINTM(test2);
+//    DEBUG_PRINTM(testAdd);
+//    DEBUG_PRINTM(tmp6);
+//    ac.apply(cv::gin(test,testAdd), cv::gout(tmp6));
+//    DEBUG_PRINTM(test);
+//    DEBUG_PRINTM(testAdd);
+//    DEBUG_PRINTM(tmp6);
+//    
+//    
 //    return;
 //    
 //    int from_to[] = { 0,0 };
@@ -956,14 +1001,14 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf
     TRACE("");
     DEBUG_PRINTM(xf);
     
-    xf_sqr_norm = MatUtil::sqr_norm(xf);
+    xf_sqr_norm = (cv::norm(xf , cv::NORM_L2SQR) / static_cast<double>(xf.rows * xf.cols));
     DEBUG_PRINT(xf_sqr_norm);
     
     if (auto_correlation) {
         yf_sqr_norm = xf_sqr_norm;
     } else {
         DEBUG_PRINTM(yf);
-        yf_sqr_norm = MatUtil::sqr_norm(yf);
+        yf_sqr_norm = (cv::norm(yf , cv::NORM_L2SQR) / static_cast<double>(yf.rows * yf.cols));
     }
     DEBUG_PRINT(yf_sqr_norm);
     
