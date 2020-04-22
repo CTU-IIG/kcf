@@ -6,6 +6,9 @@
 #include <opencv2/core/core.hpp>
 #include "debug.h"
 #include <functional>
+#include <opencv2/gapi.hpp>
+#include <opencv2/gapi/core.hpp>
+#include <opencv2/gapi/imgproc.hpp>
 
 class MatUtil{
 public:
@@ -86,47 +89,6 @@ static void set_channel(int idxFrom, int idxTo, cv::UMat &source, cv::UMat &targ
     cv::Mat convTgt = target.getMat(cv::ACCESS_RW);
     cv::mixChannels( &convSrc, 1, &convTgt, 1, from_to, 1 );
 }
-
-/*
- * REPLACED BY OPENCV IMPLEMENTATION
- * ------------------------------------
- * Computes sum of results from formula ((real)^2 + (imag)^2) 
- * for every complex element of the input matrix.
-**/ 
-//static double sqr_norm(const cv::Mat &host)
-//{
-//    assert(host.channels() % 2 == 0);
-//    double sum_sqr_norm = 0;
-//
-//    for (int row = 0; row < host.rows; ++row){
-//        for (int col = 0; col < host.cols; ++col){
-//            for (int ch = 0; ch < host.channels() / 2; ++ch){
-//                std::complex<double> cpxVal = host.ptr<std::complex<double>>(row)[(host.channels() / 2)*col + ch];
-//                sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
-//            }
-//        }
-//    }
-//    sum_sqr_norm = sum_sqr_norm / static_cast<double>(host.rows * host.cols);
-//    return sum_sqr_norm;
-//}
-//static float sqr_norm(const cv::UMat &host)
-//{
-//    assert(host.channels() % 2 == 0);
-//    float sum_sqr_norm = 0;
-//    cv::Mat tempHost = host.getMat(cv::ACCESS_READ);
-//
-//    for (int row = 0; row < host.rows; ++row){
-//        for (int col = 0; col < host.cols; ++col){
-//            for (int ch = 0; ch < host.channels() / 2; ++ch){
-//                std::complex<float> cpxVal = tempHost.ptr<std::complex<float>>(row)
-//                [(host.channels() / 2)*col + ch];
-//                sum_sqr_norm += cpxVal.real() * cpxVal.real() + cpxVal.imag() * cpxVal.imag();
-//            }
-//        }
-//    }
-//    sum_sqr_norm = sum_sqr_norm / static_cast<float>(host.rows * host.cols);
-//    return sum_sqr_norm;
-//}
 
 /*
  * Sum of channel values for each point of input matrix 
@@ -233,6 +195,25 @@ static cv::UMat mul_matn_matn(cv::UMat &host, cv::UMat &other){
  * Returns result of element wise addition to complex matrix
 **/
 static cv::UMat add_scalar(cv::UMat &host, const float &val){
+    cv::Mat tempMat = host.getMat(cv::ACCESS_RW);
+    cv::Mat_< std::complex<float> > cpxMatIn = cv::Mat_< std::complex<float> >(tempMat);
+    cv::Mat_< std::complex<float> > cpxMatOut;
+    
+    cv::GMat in;    
+    cv::GMat out = cv::gapi::addC(in,val);
+    cv::GComputation ac(in, out);
+    ac.apply(cpxMatIn, cpxMatOut);
+    
+    cv::UMat result = cpxMatOut.getUMat(cv::ACCESS_RW);
+    return result;
+}
+
+/*
+ * Returns result of element wise addition to complex matrix.
+ * Produces same result as add_scalar() with great speed, but uses parallel processing through CPU instead of GPU.
+ * Left in the code to compare its speed against GAPI implementation.
+**/
+static cv::UMat add_scalar_cpu(cv::UMat &host, const float &val){
     return mat_const_operator([&val](std::complex<float> &c, const int * position) { 
         c += val; 
         (void)position;

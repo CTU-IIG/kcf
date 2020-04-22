@@ -176,10 +176,20 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    testAdd.ptr<float>(1)[5] = float(1);
 //    testAdd.ptr<float>(1)[6] = float(1);
 //    testAdd.ptr<float>(1)[7] = float(1);
-//    
+////    
 //    std::vector<int> dims3 = std::vector<int>({2, 2, 2});
 //    cv::Mat plan = MatUtil::plane(0,test);
-//    cv::Mat testComplex = MatUtil::rowToMat(0,plan);
+//    cv::Mat_< std::complex<float> > cpxMat = cv::Mat_< std::complex<float> >(plan);
+//    cv::Mat_< std::complex<float> > cpxMat2;
+//    
+//    cv::GMat in;    
+//    cv::GMat out = cv::gapi::addC(in,10);
+//    cv::GComputation ac(in, out);
+//    ac.apply(cpxMat, cpxMat2);
+//    DEBUG_PRINTM(test);
+//    DEBUG_PRINTM(cpxMat);
+//    DEBUG_PRINTM(cpxMat2);
+//    return;
 //    
 //    DEBUG_PRINTM(test);
 //    DEBUG_PRINTM(testAdd);
