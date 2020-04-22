@@ -135,8 +135,8 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    DEBUG_PRINTM(test);
 //    std::vector<int> dims = std::vector<int>({2, 2, 2});
 //    std::vector<int> dims2 = std::vector<int>({2, 2, 2});
-//    cv::Mat test = cv::Mat(dims, CV_32FC2);
-//    cv::Mat testAdd = cv::Mat(dims2, CV_32FC2);
+//    cv::Mat test = cv::Mat(3, dims.data(), CV_32FC2);
+//    cv::Mat testAdd = cv::Mat(3, dims2.data(), CV_32FC2);
 //
 //    cv::UMat testPl = cv::UMat(test.size[1], test.size[2], test.type(), test.getMat(cv::ACCESS_RW).ptr<float>(0));
 //    
@@ -176,6 +176,15 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    testAdd.ptr<float>(1)[5] = float(1);
 //    testAdd.ptr<float>(1)[6] = float(1);
 //    testAdd.ptr<float>(1)[7] = float(1);
+//    
+//    std::vector<int> dims3 = std::vector<int>({2, 2, 2});
+//    cv::Mat plan = MatUtil::plane(0,test);
+//    cv::Mat testComplex = MatUtil::rowToMat(0,plan);
+//    
+//    DEBUG_PRINTM(test);
+//    DEBUG_PRINTM(testAdd);
+//    DEBUG_PRINTM(testComplex);
+//    return;
 //
 //    cv::GMat in;  
 //    cv::GMat inAdd;   
@@ -1015,7 +1024,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf
     cv::UMat conjMat = MatUtil::conj(yf);   
     xyf = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
     DEBUG_PRINTM(xyf);
-
+    
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
     cv::UMat xyf_sum = MatUtil::sum_over_channels(xyf);
     DEBUG_PRINTM(xyf_sum);
