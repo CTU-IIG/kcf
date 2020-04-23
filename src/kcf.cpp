@@ -293,25 +293,36 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
     p_init_pose.cx = x1 + p_init_pose.w / 2.;
     p_init_pose.cy = y1 + p_init_pose.h / 2.;
 
-    cv::UMat input_gray, input_rgb = img.clone();
-        
-    if (img.channels() == 3) {
-        cv::cvtColor(img, input_gray, cv::COLOR_BGR2GRAY);
-        input_gray.convertTo(input_gray, CV_32FC1);
-    } else
-        img.convertTo(input_gray, CV_32FC1);
     
-    cv::Mat tempGray = input_gray.getMat(cv::ACCESS_RW);
+    cv::UMat input_rgb = img.clone();
     cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+    cv::Mat tempGray;
+    
+    cv::GMat inRgb;
+    cv::GMat outGray;
+    if (img.channels() == 3) {
+        outGray = cv::gapi::BGR2Gray(inRgb);
+        cv::GMat tempGapiGray = cv::gapi::convertTo(outGray, CV_32FC1);
+        outGray = tempGapiGray;
+    } else {
+        outGray = cv::gapi::convertTo(inRgb, CV_32FC1);
+    }
+    cv::GComputation cvtToGray(inRgb, outGray);
+    cvtToGray.apply(tempRgb, tempGray);
+    cv::UMat input_gray = tempGray.getUMat(cv::ACCESS_RW);
+
     // don't need too large image
     if (p_init_pose.w * p_init_pose.h > 100. * 100.) {
         std::cout << "resizing image by factor of " << 1 / p_downscale_factor << std::endl;
         p_resize_image = true;
         p_init_pose.scale(p_downscale_factor);
-        cv::resize(tempGray, tempGray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-        cv::resize(tempRgb, tempRgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GMat inRgb2;
+        cv::GMat inGray2;
+        cv::GMat outRgb2 = cv::gapi::resize(inRgb2, cv::Size(0, 0),p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GMat outGray2 = cv::gapi::resize(inGray2, cv::Size(0, 0),p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GComputation resizeBoth(cv::GIn(inRgb2,inGray2), cv::GOut(outRgb2, outGray2));
+        resizeBoth.apply(cv::gin(tempRgb, tempGray) , cv::gout(tempRgb, tempGray));
     }
-    
 
     // compute win size + fit to fhog cell size
     p_windows_size.width = round(p_init_pose.w * (1. + p_padding) / p_cell_size) * p_cell_size;
