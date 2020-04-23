@@ -87,8 +87,18 @@ void KCF_Tracker::train(cv::UMat input_rgb, cv::UMat input_gray, double interp_f
     DEBUG_PRINT(model->patch_feats);    
     fft.forward_window(model->patch_feats, model->xf, model->temp);
     DEBUG_PRINTM(model->xf);
-    model->model_xf.getMat(cv::ACCESS_RW) = (model->model_xf.getMat(cv::ACCESS_RW) * (1. - interp_factor) + 
-            model->xf.getMat(cv::ACCESS_RW) * interp_factor);
+    
+    cv::Mat tempModelXf = model->model_xf.getMat(cv::ACCESS_RW);
+    cv::Mat tempXf = model->xf.getMat(cv::ACCESS_RW);
+    
+    cv::GMat in;
+    cv::GMat in2;
+    cv::GMat tempIn = cv::gapi::mulC(in, (1. - interp_factor));
+    cv::GMat tempIn2 = cv::gapi::mulC(in2, interp_factor);
+    cv::GMat out = cv::gapi::add(tempIn, tempIn2);
+    cv::GComputation mulAdd(cv::GIn(in, in2), cv::GOut(out));
+    mulAdd.apply(cv::gin(tempModelXf, tempXf), cv::gout(tempModelXf));
+    
     DEBUG_PRINTM(model->model_xf);
     
     
