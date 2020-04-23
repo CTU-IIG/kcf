@@ -716,14 +716,18 @@ cv::Mat KCF_Tracker::get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::M
     cv::Mat patch_gray = get_subwindow(input_gray, cx, cy, scaled.width, scaled.height, angle);
     cv::Mat patch_rgb = get_subwindow(input_rgb, cx, cy, scaled.width, scaled.height, angle);
 
+    cv::GMat rszIn;
+    cv::GMat rszOut;
     // resize to default size
     if (scaled.area() > fit_size.area()) {
         // if we downsample use  INTER_AREA interpolation
         // note: this is just a guess - we may downsample in X and upsample in Y (or vice versa)
-        cv::resize(patch_gray, patch_gray, fit_size, 0., 0., cv::INTER_AREA);
+        rszOut = cv::gapi::resize(rszIn, fit_size, 0., 0., cv::INTER_AREA);
     } else {
-        cv::resize(patch_gray, patch_gray, fit_size, 0., 0., cv::INTER_LINEAR);
+        rszOut = cv::gapi::resize(rszIn, fit_size, 0., 0., cv::INTER_LINEAR);
     }
+    cv::GComputation resizeFit(rszIn, rszOut);
+    resizeFit.apply(patch_gray, patch_gray);
 
     // get hog(Histogram of Oriented Gradients) features
     std::vector<cv::Mat> hog_feat = FHoG::extract(patch_gray, 2, p_cell_size, 9);
@@ -732,12 +736,16 @@ cv::Mat KCF_Tracker::get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::M
     std::vector<cv::Mat> color_feat;
     if ((m_use_color || m_use_cnfeat) && input_rgb.channels() == 3) {
         // resize to default size
+        cv::GMat rszIn2;
+        cv::GMat rszOut2;
         if (scaled.area() > (fit_size / p_cell_size).area()) {
             // if we downsample use  INTER_AREA interpolation
-            cv::resize(patch_rgb, patch_rgb, fit_size / p_cell_size, 0., 0., cv::INTER_AREA);
+            rszOut2 = cv::gapi::resize(rszIn2, fit_size / p_cell_size, 0., 0., cv::INTER_AREA);
         } else {
-            cv::resize(patch_rgb, patch_rgb, fit_size / p_cell_size, 0., 0., cv::INTER_LINEAR);
+            rszOut2 = cv::gapi::resize(rszIn2, fit_size / p_cell_size, 0., 0., cv::INTER_LINEAR);
         }
+        cv::GComputation resizeFitCell(rszIn2, rszOut2);
+        resizeFitCell.apply(patch_rgb, patch_rgb);
     }
 
     if (dbg_patch)
