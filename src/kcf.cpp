@@ -441,21 +441,17 @@ double KCF_Tracker::getFilterResponse() const
     return this->max_response;
 }
 
-void KCF_Tracker::resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray)
-{
-    if (p_resize_image) {
-        cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-        cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-    }
-}
 void KCF_Tracker::resizeImgs(cv::UMat &input_rgb, cv::UMat &input_gray)
 {
-    cv::Mat tempGray = input_gray.getMat(cv::ACCESS_RW);
-    cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
-    
     if (p_resize_image) {
-        cv::resize(tempGray, tempGray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-        cv::resize(tempRgb, tempRgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::Mat tempGray = input_gray.getMat(cv::ACCESS_RW);
+        cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+        cv::GMat inRgb;
+        cv::GMat inGray;
+        cv::GMat outRgb = cv::gapi::resize(inRgb, cv::Size(0, 0),p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GMat outGray = cv::gapi::resize(inGray, cv::Size(0, 0),p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GComputation resizeBoth(cv::GIn(inRgb,inGray), cv::GOut(outRgb, outGray));
+        resizeBoth.apply(cv::gin(tempRgb, tempGray) , cv::gout(tempRgb, tempGray));
     }
 }
 
@@ -570,13 +566,23 @@ void KCF_Tracker::track(cv::UMat &img)
     __dbgTracer.debug = m_debug;
     TRACE("");
 
-    cv::UMat input_gray, input_rgb = img.clone();
+    cv::UMat input_rgb = img.clone();
+    cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+    cv::Mat tempGray;
+    
+    cv::GMat inRgb;
+    cv::GMat outGray;
     if (img.channels() == 3) {
-        cv::cvtColor(img, input_gray, cv::COLOR_BGR2GRAY);
-        input_gray.convertTo(input_gray, CV_32FC1);
-    } else
-        img.convertTo(input_gray, CV_32FC1);
-
+        outGray = cv::gapi::BGR2Gray(inRgb);
+        cv::GMat tempGapiGray = cv::gapi::convertTo(outGray, CV_32FC1);
+        outGray = tempGapiGray;
+    } else {
+        outGray = cv::gapi::convertTo(inRgb, CV_32FC1);
+    }
+    cv::GComputation cvtToGray(inRgb, outGray);
+    cvtToGray.apply(tempRgb, tempGray);
+    cv::UMat input_gray = tempGray.getUMat(cv::ACCESS_RW);
+    
     // don't need too large image
     resizeImgs(input_rgb, input_gray);
 

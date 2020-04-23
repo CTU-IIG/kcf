@@ -193,7 +193,6 @@ private:
     cv::Mat get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::Mat *dbg_patch, int cx, int cy, int size_x, int size_y, double scale, double angle) const;
     cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const;
     double sub_grid_scale(uint index);
-    void resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray);
     void resizeImgs(cv::UMat &input_rgb, cv::UMat &input_gray);
     void train(cv::UMat input_rgb, cv::UMat input_gray, double interp_factor);
     double findMaxReponse(uint &max_idx, cv::Point2d &new_location) const;
