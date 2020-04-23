@@ -189,7 +189,6 @@ private:
     cv::Mat circshift(const cv::Mat &patch, int x_rot, int y_rot) const;
     cv::UMat circshift(const cv::UMat &patch, int x_rot, int y_rot) const;
     cv::Mat cosine_window_function(int dim1, int dim2);
-    cv::UMat cosine_window_function_umat(int dim1, int dim2);
     cv::Mat get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::Mat *dbg_patch, int cx, int cy, int size_x, int size_y, double scale, double angle) const;
     cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const;
     double sub_grid_scale(uint index);

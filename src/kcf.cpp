@@ -391,7 +391,7 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
            * p_output_sigma_factor / p_cell_size;
 
     fft.init(feature_size.width, feature_size.height, p_num_of_feats, p_num_scales * p_num_angles);
-    fft.set_window(cosine_window_function_umat(feature_size.width, feature_size.height));
+    fft.set_window(cosine_window_function(feature_size.width, feature_size.height).getUMat(cv::ACCESS_RW));
 
     // window weights, i.e. labels
     cv::Mat gsl(feature_size,CV_32F);
@@ -947,20 +947,6 @@ cv::Mat KCF_Tracker::cosine_window_function(int dim1, int dim2)
     for (int i = 0; i < dim2; ++i)
         m2.at<float>(i) = float(0.5 * (1. - std::cos(2. * CV_PI * static_cast<double>(i) * N_inv)));
     cv::Mat ret = m2 * m1;
-    return ret;
-}
-
-cv::UMat KCF_Tracker::cosine_window_function_umat(int dim1, int dim2)
-{
-    cv::Mat m1(1, dim1, CV_32FC1), m2(dim2, 1, CV_32FC1);
-    double N_inv = 1. / (static_cast<double>(dim1) - 1.);
-    for (int i = 0; i < dim1; ++i)
-        m1.at<float>(i) = float(0.5 * (1. - std::cos(2. * CV_PI * static_cast<double>(i) * N_inv)));
-    N_inv = 1. / (static_cast<double>(dim2) - 1.);
-    for (int i = 0; i < dim2; ++i)
-        m2.at<float>(i) = float(0.5 * (1. - std::cos(2. * CV_PI * static_cast<double>(i) * N_inv)));
-    cv::Mat tempMat = m2 * m1;
-    cv::UMat ret = tempMat.getUMat(cv::ACCESS_RW);
     return ret;
 }
 
