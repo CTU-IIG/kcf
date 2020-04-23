@@ -1050,8 +1050,15 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf
     cv::Mat plane = MatUtil::plane(0,ifft_res_Temp);
     DEBUG_PRINTM(plane);
     
-    cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm + yf_sqr_norm - 2 * MatUtil::plane(0,ifft_res_Temp))
-            * numel_xf_inv, 0), plane);
+    cv::Mat matExpr;
+    cv::GMat in;
+    cv::GMat inTemp = cv::gapi::mulC(in, -2);
+    cv::GMat inTemp2 = cv::gapi::addC(inTemp, xf_sqr_norm + yf_sqr_norm);
+    cv::GMat out = cv::gapi::mulC(inTemp2, numel_xf_inv);
+    cv::GComputation getMaxArg(in, out);
+    getMaxArg.apply(plane,matExpr);
+    
+    cv::exp(-1. / (sigma * sigma) * cv::max(matExpr, 0), plane);
     
     DEBUG_PRINTM(plane);
 
