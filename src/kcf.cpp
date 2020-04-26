@@ -153,6 +153,9 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    
 ////    cv::Mat_<std::complex<float>> testComplex = cv::Mat_<std::complex<float>>(test2);
 //    
+//    
+//    cv::UMat testOrig = cv::UMat(2, 2, CV_32FC4);
+//    cv::Mat test = testOrig.getMat(cv::ACCESS_RW);
 //    test.ptr<float>(0)[0] = float(1);
 //    test.ptr<float>(0)[1] = float(2);
 //    test.ptr<float>(0)[2] = float(3);
@@ -161,6 +164,19 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    test.ptr<float>(0)[5] = float(6);
 //    test.ptr<float>(0)[6] = float(7);
 //    test.ptr<float>(0)[7] = float(8);
+//    test.ptr<float>(0)[8] = float(9);
+//    test.ptr<float>(0)[9] = float(10);
+//    test.ptr<float>(0)[10] = float(11);
+//    test.ptr<float>(0)[11] = float(12);
+//    test.ptr<float>(0)[12] = float(13);
+//    test.ptr<float>(0)[13] = float(14);
+//    test.ptr<float>(0)[14] = float(15);
+//    test.ptr<float>(0)[15] = float(16);
+//    DEBUG_PRINTM(test);
+//    cv::UMat test2 = MatUtil::sum_over_channels_foreach(testOrig);
+//    DEBUG_PRINTM(test2);
+//    return;
+//    
 //    test.ptr<float>(1)[0] = float(9);
 //    test.ptr<float>(1)[1] = float(10);
 //    test.ptr<float>(1)[2] = float(11);
@@ -1058,7 +1074,7 @@ void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf
     
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
     cv::UMat xyf_sum = MatUtil::sum_over_channels(xyf);
-    DEBUG_PRINTM(xyf_sum);
+    DEBUG_PRINTM(xyf_sum);    
     kcf.fft.inverse(xyf_sum, ifft_res);
     DEBUG_PRINTM(ifft_res);
 

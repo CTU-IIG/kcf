@@ -94,36 +94,26 @@ static void set_channel(int idxFrom, int idxTo, cv::UMat &source, cv::UMat &targ
  * Sum of channel values for each point of input matrix 
  * becomes a new point in the new matrix.
 **/
-static cv::Mat sum_over_channels(cv::Mat &host)
-{
-    assert(host.channels() % 2 == 0);
-    cv::Mat result(host.rows, host.cols, CV_32FC2);
-    for (int row = 0; row < host.rows; ++row)
-        for (int col = 0; col < host.cols; ++col){
-            std::complex<float> acc = 0;
-            for (int ch = 0; ch < host.channels() / 2; ++ch){
-                acc += host.ptr<std::complex<float>>(row)[(host.channels() / 2)*col + ch];
-            }
-            result.ptr<std::complex<float>>(row)[col] = acc;
-        }
-    return result;
-}
 static cv::UMat sum_over_channels(cv::UMat &host)
 {
     assert(host.channels() % 2 == 0);
-    cv::UMat result(host.rows, host.cols, CV_32FC2);
-    cv::Mat tempHost = host.getMat(cv::ACCESS_RW);
-    cv::Mat tempResult = result.getMat(cv::ACCESS_RW);
+    assert(host.rows > 0);
+    assert(host.cols > 0);
     
-    for (int row = 0; row < host.rows; ++row)
-        for (int col = 0; col < host.cols; ++col){
-            std::complex<float> acc = 0;
-            for (int ch = 0; ch < host.channels() / 2; ++ch){
-                acc += tempHost.ptr<std::complex<float>>(row)[(host.channels() / 2)*col + ch];
-            }
-            tempResult.ptr<std::complex<float>>(row)[col] = acc;
+    cv::Mat tempHost = host.getMat(cv::ACCESS_RW);
+    cv::Mat result = cv::Mat::zeros(tempHost.rows, tempHost.cols, CV_32FC2);
+    cv::Mat_< std::complex<float> > cpxMat = cv::Mat_< std::complex<float> >(result);
+    
+    cpxMat.forEach([&tempHost](std::complex<float> &c, const int * position) { 
+        std::complex<float> acc = 0;
+        int rowVal = *position; 
+        int colVal = *(position +1);
+        for (int ch = 0; ch < tempHost.channels() / 2; ++ch){
+            acc += tempHost.ptr<std::complex<float>>(rowVal)[(tempHost.channels() / 2)*(colVal) + ch];
         }
-    return result;
+        c = acc;
+    });
+    return result.getUMat(cv::ACCESS_RW);
 }
 
 
