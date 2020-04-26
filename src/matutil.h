@@ -156,26 +156,7 @@ static cv::UMat mul_matn_mat1(cv::UMat &host, cv::UMat &other){
  * Returns result of element wise multiplication between two n-channeled complex matrixes
 **/
 static cv::UMat mul_matn_matn(cv::UMat &host, cv::UMat &other){
-    assert(host.channels() % 2 == 0);
-    assert(other.channels() == host.channels());
-    assert(other.cols == host.cols);
-    assert(other.rows == host.rows);
-    
-    cv::Mat tempHost = host.getMat(cv::ACCESS_RW);
-    cv::Mat tempOther = other.getMat(cv::ACCESS_RW);
-    cv::Mat result = cv::Mat::zeros(tempHost.rows, tempHost.cols, tempHost.type());
-    cv::Mat_< std::complex<float> > cpxRes = cv::Mat_< std::complex<float> >(result);
-    cv::Mat_< std::complex<float> > cpxHost = cv::Mat_< std::complex<float> >(tempHost);
-    cv::Mat_< std::complex<float> > cpxOther = cv::Mat_< std::complex<float> >(tempOther);
-    
-    cpxRes.forEach([&cpxHost, &cpxOther](std::complex<float> &c, const int * position) { 
-        int rowVal = *position; 
-        int colVal = *(position +1);
-        std::complex<float> cpxValHost = cpxHost.ptr<std::complex<float>>(rowVal)[colVal];
-        std::complex<float> cpxValOther = cpxOther.ptr<std::complex<float>>(rowVal)[colVal];
-        c = cpxValHost * cpxValOther;
-    });
-    return result.getUMat(cv::ACCESS_RW);
+    return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
 }
 
 static cv::UMat mul_matn_matn_gapi(cv::UMat &host, cv::UMat &other){
@@ -280,26 +261,28 @@ static cv::UMat matn_mat1_operator(void (*op)(std::complex<float> &, const std::
  * Every value in the first matrix will be processed with its corresponding value in the other matrix,
  * both channel and coordinate wise.
 **/
-static cv::UMat mat_mat_operator(void (*op)(std::complex<float> &, const std::complex<float> &), cv::UMat &host, cv::UMat &other){
+static cv::UMat mat_mat_operator(const std::function<void (std::complex<float> &, std::complex<float> &)> &op, cv::UMat &host, cv::UMat &other){
     assert(host.channels() % 2 == 0);
     assert(other.channels() == host.channels());
     assert(other.cols == host.cols);
     assert(other.rows == host.rows);
     
-    cv::UMat result = host.clone();
-    cv::Mat tempResult = result.getMat(cv::ACCESS_RW);
-    cv::Mat tempOther = other.getMat(cv::ACCESS_READ);
-    for (int i = 0; i < result.rows; ++i) {
-        for (int j = 0; j < result.cols; ++j){
-            for (int k = 0; k < result.channels() / 2 ; ++k){
-                std::complex<float> cpxValHost = tempResult.ptr<std::complex<float>>(i)[(tempResult.channels() / 2)*j + k];
-                std::complex<float> cpxValOther = tempOther.ptr<std::complex<float>>(i)[(tempOther.channels() / 2)*j + k];
-                op(cpxValHost, cpxValOther);
-                tempResult.ptr<std::complex<float>>(i)[(tempResult.channels() / 2)*j + k] = cpxValHost;
-            }
-        }
-    }
-    return result;
+    cv::Mat tempHost = host.getMat(cv::ACCESS_RW);
+    cv::Mat tempOther = other.getMat(cv::ACCESS_RW);
+    cv::Mat result = cv::Mat::zeros(tempHost.rows, tempHost.cols, tempHost.type());
+    cv::Mat_< std::complex<float> > cpxRes = cv::Mat_< std::complex<float> >(result);
+    cv::Mat_< std::complex<float> > cpxHost = cv::Mat_< std::complex<float> >(tempHost);
+    cv::Mat_< std::complex<float> > cpxOther = cv::Mat_< std::complex<float> >(tempOther);
+    
+    cpxRes.forEach([&cpxHost, &cpxOther, &op](std::complex<float> &c, const int * position) { 
+        int rowVal = *position; 
+        int colVal = *(position +1);
+        std::complex<float> cpxValHost = cpxHost.ptr<std::complex<float>>(rowVal)[colVal];
+        std::complex<float> cpxValOther = cpxOther.ptr<std::complex<float>>(rowVal)[colVal];
+        op(cpxValHost, cpxValOther);
+        c = cpxValHost;
+    });
+    return result.getUMat(cv::ACCESS_RW);
 }
 
 };
