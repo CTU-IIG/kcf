@@ -159,46 +159,31 @@ static cv::UMat mul_matn_matn(cv::UMat &host, cv::UMat &other){
     return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
 }
 
-static cv::UMat mul_matn_matn_gapi(cv::UMat &host, cv::UMat &other){
-    cv::Mat temphost = host.getMat(cv::ACCESS_RW);
-    cv::Mat tempother = other.getMat(cv::ACCESS_RW);
-    cv::Mat_< std::complex<float> > cpxMatIn = cv::Mat_< std::complex<float> >(temphost);
-    cv::Mat_< std::complex<float> > cpxMatIn2 = cv::Mat_< std::complex<float> >(tempother);
-    cv::Mat_< std::complex<float> > cpxMatOut;
-    
-    cv::GMat in;
-    cv::GMat in2;
-    cv::GMat out = cv::gapi::mul(in, in2);
-    cv::GComputation ac(in, in2, out);
-    ac.apply(cpxMatIn, cpxMatIn2, cpxMatOut);
-    
-    cv::UMat result = cpxMatOut.getUMat(cv::ACCESS_RW);
-    return result;
-}
+/*
+ * NOT YET IMPLEMENTED IN OPENCV 4.1.1
+ * Same result as mul_matn_matn(), but uses GPU instead of CPU for computation
+**/
+//static cv::UMat mul_matn_matn_gapi(cv::UMat &host, cv::UMat &other){
+//    cv::Mat temphost = host.getMat(cv::ACCESS_RW);
+//    cv::Mat tempother = other.getMat(cv::ACCESS_RW);
+//    cv::Mat_< std::complex<float> > cpxMatIn = cv::Mat_< std::complex<float> >(temphost);
+//    cv::Mat_< std::complex<float> > cpxMatIn2 = cv::Mat_< std::complex<float> >(tempother);
+//    cv::Mat_< std::complex<float> > cpxMatOut;
+//    
+//    cv::GMat in;
+//    cv::GMat in2;
+//    cv::GMat out = cv::gapi::mul(in, in2);
+//    cv::GComputation ac(in, in2, out);
+//    ac.apply(cpxMatIn, cpxMatIn2, cpxMatOut);
+//    
+//    cv::UMat result = cpxMatOut.getUMat(cv::ACCESS_RW);
+//    return result;
+//}
 
 /*
  * Returns result of element wise addition to complex matrix
 **/
 static cv::UMat add_scalar(cv::UMat &host, const float &val){
-    cv::Mat tempMat = host.getMat(cv::ACCESS_RW);
-    cv::Mat_< std::complex<float> > cpxMatIn = cv::Mat_< std::complex<float> >(tempMat);
-    cv::Mat_< std::complex<float> > cpxMatOut;
-    
-    cv::GMat in;    
-    cv::GMat out = cv::gapi::addC(in,val);
-    cv::GComputation ac(in, out);
-    ac.apply(cpxMatIn, cpxMatOut);
-    
-    cv::UMat result = cpxMatOut.getUMat(cv::ACCESS_RW);
-    return result;
-}
-
-/*
- * Returns result of element wise addition to complex matrix.
- * Produces same result as add_scalar() with great speed, but uses parallel processing through CPU instead of GPU.
- * Left in the code to compare its speed against GAPI implementation.
-**/
-static cv::UMat add_scalar_cpu(cv::UMat &host, const float &val){
     return mat_const_operator([&val](std::complex<float> &c, const int * position) { 
         c += val; 
         (void)position;
@@ -206,11 +191,52 @@ static cv::UMat add_scalar_cpu(cv::UMat &host, const float &val){
 }
 
 /*
+ * WARNING: returns correct output, but relies on unintended functionality 
+ * of OpenCV 4.1.1 (usually cant process complex numbers)
+ * Same result as add_scalar(), but uses GPU instead of CPU for computation
+**/
+//static cv::UMat add_scalar_gapi(cv::UMat &host, const float &val){
+//    cv::Mat tempMat = host.getMat(cv::ACCESS_RW);
+//    cv::Mat_< std::complex<float> > cpxMatIn = cv::Mat_< std::complex<float> >(tempMat);
+//    cv::Mat_< std::complex<float> > cpxMatOut;
+//    
+//    cv::GMat in;    
+//    cv::GMat out = cv::gapi::addC(in,val);
+//    cv::GComputation ac(in, out);
+//    ac.apply(cpxMatIn, cpxMatOut);
+//    
+//    cv::UMat result = cpxMatOut.getUMat(cv::ACCESS_RW);
+//    return result;
+//}
+
+
+/*
  * Returns result of element wise division between two n-channeled complex matrixes
 **/
 static cv::UMat divide_matn_matn(cv::UMat &host, cv::UMat &other){
     return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs /= c_rhs; }, host, other);
 }
+
+/*
+ * NOT YET IMPLEMENTED IN OPENCV 4.1.1
+ * Same result as divide_matn_matn(), but uses GPU instead of CPU for computation
+**/
+//static cv::UMat divide_matn_matn_gapi(cv::UMat &host, cv::UMat &other){
+//    cv::Mat temphost = host.getMat(cv::ACCESS_RW);
+//    cv::Mat tempother = other.getMat(cv::ACCESS_RW);
+//    cv::Mat_< std::complex<float> > cpxMatIn = cv::Mat_< std::complex<float> >(temphost);
+//    cv::Mat_< std::complex<float> > cpxMatIn2 = cv::Mat_< std::complex<float> >(tempother);
+//    cv::Mat_< std::complex<float> > cpxMatOut;
+//    
+//    cv::GMat in;
+//    cv::GMat in2;
+//    cv::GMat out = cv::gapi::div(in,in2, 1.0);
+//    cv::GComputation ac(in, in2, out);
+//    ac.apply(cpxMatIn, cpxMatIn2, cpxMatOut);
+//    
+//    cv::UMat result = cpxMatOut.getUMat(cv::ACCESS_RW);
+//    return result;
+//}
 
 /*
  * Helper function to iterate through an input complex matrix.
@@ -238,20 +264,20 @@ static cv::UMat matn_mat1_operator(void (*op)(std::complex<float> &, const std::
     assert(other.cols == host.cols);
     assert(other.rows == host.rows);
     
-    cv::UMat result = host.clone();
-    cv::Mat tempResult = result.getMat(cv::ACCESS_RW);
-    cv::Mat tempOther = other.getMat(cv::ACCESS_READ);
-    for (int i = 0; i < result.rows; ++i) {
-        for (int j = 0; j < result.cols; ++j){
-            for (int k = 0; k < result.channels() / 2 ; ++k){
-                std::complex<float> cpxValOther = tempOther.ptr<std::complex<float>>(i)[j];
-                std::complex<float> cpxValHost = tempResult.ptr<std::complex<float>>(i)[(tempResult.channels() / 2)*j + k];
-                op(cpxValHost, cpxValOther);
-                tempResult.ptr<std::complex<float>>(i)[(tempResult.channels() / 2)*j + k] = cpxValHost;
-            }
+    cv::Mat tempHost = host.getMat(cv::ACCESS_RW);
+    cv::Mat result = cv::Mat::zeros(tempHost.rows, tempHost.cols, tempHost.type());
+    cv::Mat_< std::complex<float> > cpxMat = cv::Mat_< std::complex<float> >(other.getMat(cv::ACCESS_RW));
+    
+    cpxMat.forEach([&tempHost, &result, &op](std::complex<float> &c, const int * position) { 
+        int rowVal = *position; 
+        int colVal = *(position +1);
+        for (int k = 0; k < result.channels() / 2 ; ++k){
+            std::complex<float> cpxValHost = tempHost.ptr<std::complex<float>>(rowVal)[(tempHost.channels() / 2)*colVal + k];
+            op(cpxValHost,c);
+            result.ptr<std::complex<float>>(rowVal)[(result.channels() / 2)*colVal + k] = cpxValHost;
         }
-    }
-    return result;
+    });
+    return result.getUMat(cv::ACCESS_RW);
 }
 
 
