@@ -148,9 +148,6 @@ static cv::UMat conj(cv::UMat &host){
 /*
  * Returns result of element wise multiplication between n-channeled and single-channeled complex matrixes
 **/
-static cv::Mat mul_matn_mat1(cv::Mat &host, cv::Mat &other){
-    return matn_mat1_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
-}
 static cv::UMat mul_matn_mat1(cv::UMat &host, cv::UMat &other){
     return matn_mat1_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
 }
@@ -158,9 +155,6 @@ static cv::UMat mul_matn_mat1(cv::UMat &host, cv::UMat &other){
 /*
  * Returns result of element wise multiplication between two n-channeled complex matrixes
 **/
-static cv::Mat mul_matn_matn(cv::Mat &host, cv::Mat &other){
-    return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
-}
 static cv::UMat mul_matn_matn(cv::UMat &host, cv::UMat &other){
     return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs *= c_rhs; }, host, other);
 }
@@ -197,9 +191,6 @@ static cv::UMat add_scalar_cpu(cv::UMat &host, const float &val){
 /*
  * Returns result of element wise division between two n-channeled complex matrixes
 **/
-static cv::Mat divide_matn_matn(cv::Mat &host, cv::Mat &other){
-    return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs /= c_rhs; }, host, other);
-}
 static cv::UMat divide_matn_matn(cv::UMat &host, cv::UMat &other){
     return mat_mat_operator([](std::complex<float> &c_lhs, const std::complex<float> &c_rhs) { c_lhs /= c_rhs; }, host, other);
 }
