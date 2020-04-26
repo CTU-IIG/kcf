@@ -73,13 +73,6 @@ static cv::UMat scale(uint scale, cv::UMat &host) {
  * are next to each other in the internal array (1 pixel = continuous block).
  * Previous format saved all pixel values of each channel next to each other.
 **/ 
-static void set_channel(int idxFrom, int idxTo, cv::Mat &source, cv::Mat &target)
-{
-    assert(idxTo < target.channels());
-    assert(idxFrom < source.channels());
-    int from_to[] = { idxFrom,idxTo };
-    cv::mixChannels( &source, 1, &target, 1, from_to, 1 );
-}
 static void set_channel(int idxFrom, int idxTo, cv::UMat &source, cv::UMat &target)
 {
     assert(idxTo < target.channels());
@@ -121,15 +114,6 @@ static cv::UMat sum_over_channels(cv::UMat &host)
  * Extracts two channels from input, and sets them as data of resulting new matrix.
  * Presumes format where two neighbouring channels of input make one complex value.
 **/
-static cv::Mat channel_to_cv_mat(int channel_id, cv::Mat &host){
-    cv::Mat result(host.rows, host.cols, CV_32FC2);
-    int from_to[] = { channel_id, 0 };
-    cv::mixChannels(&host,1,&result,1,from_to,1);
-    int from_to2[] = { (channel_id + 1), 1 };
-    cv::mixChannels(&host,1,&result,1,from_to2,1);
-    return result;
-}
-
 static cv::UMat channel_to_cv_mat(int channel_id, cv::UMat &host){
     cv::UMat result(host.rows, host.cols, CV_32FC2);
     cv::Mat tempHost = host.getMat(cv::ACCESS_RW);
