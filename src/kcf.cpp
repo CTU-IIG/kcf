@@ -12,6 +12,7 @@
 #include <opencv2/gapi.hpp>
 #include <opencv2/gapi/core.hpp>
 #include <opencv2/gapi/imgproc.hpp>
+#include <opencv2/core/core_c.h>
 
 #ifdef OPENMP
 #include <omp.h>
@@ -153,6 +154,10 @@ void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int 
 //    
 ////    cv::Mat_<std::complex<float>> testComplex = cv::Mat_<std::complex<float>>(test2);
 //    
+//    
+//    double time_profile_counter = cv::getCPUTickCount();
+//    time_profile_counter = cv::getCPUTickCount() - time_profile_counter;
+//        std::cout << " Speed : " <<  time_profile_counter/((double)cvGetTickFrequency()*1000) << "ms." << std::endl;
 //    
 //    cv::UMat testOrig = cv::UMat(2, 2, CV_32FC4);
 //    cv::Mat test = testOrig.getMat(cv::ACCESS_RW);
