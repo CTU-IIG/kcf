@@ -20,30 +20,23 @@
 // 
 // Matrices are accepted and returned as metadata type cv::GMatDesc,
 // which describe these matrices.
-#ifdef BIG_BATCH
 G_TYPED_KERNEL(GFftw,
-               <cv::GMat(cv::GMat,fftwf_plan,fftwf_plan,int,cv::Size)>,
+               <cv::GMat(cv::GMat,fftwf_plan,int,cv::Size,std::vector<int>,int)>,
                "org.opencv2.core.fftw_gapi")
-#else
-G_TYPED_KERNEL(GFftw,
-               <cv::GMat(cv::GMat,fftwf_plan,int,cv::Size)>,
-               "org.opencv2.core.fftw_gapi")
-#endif
 {
-    static cv::GMatDesc                 // output type of function, descriptor of output GMat
-    outMeta(cv::GMatDesc    in,         // argument of function, descriptor of input GMat
-            fftwf_plan      /*planA*/,  // argument of function, plan of transformation to execute
-            #ifdef BIG_BATCH
-            fftwf_plan      /*planB*/,  // argument of function, plan of transformation to execute in case of BIG_BATCH
-            #endif
-            int             flag,        // argument of function, 1=forward, 2=forward_window, 3=inverse
-            cv::Size        size
+    static cv::GMatDesc                         // output type of function, descriptor of output GMat
+    outMeta(cv::GMatDesc    in,                 // argument of function, descriptor of input GMat
+            fftwf_plan      /*plan*/,           // argument of function, plan of transformation to execute
+            int             flag,               // argument of function, 1=forward OR forward_window, 2=inverse
+            cv::Size        size,               // argument of function, how big will be the resulting matrix
+            std::vector<int> /*inputDims*/,     // argument of function, how big was the input matrix before reformatting
+            int             /*channels*/        // argument of function, how many channels in the output matrix before reformatting
             )
     {
         // This describes output of the custom function, 
         // specifically that it should be the same as input, but with 1 or 2 channels,
         // and with supplied size.
-        if (flag == 1 || flag == 2){
+        if (flag == 1){
             return in.withSize(size).withType(CV_32F, 2);
         }
         return in.withSize(size).withType(CV_32F, 1);
@@ -53,38 +46,28 @@ G_TYPED_KERNEL(GFftw,
 GAPI_OCV_KERNEL(GCPUFftw, GFftw)
 {
     static void
-    run(const cv::Mat       &in,       // in - derived from GMat
-        const fftwf_plan    &planA,
-            #ifdef BIG_BATCH
-        const fftwf_plan    &planB,
-            #endif
-        const int           flag,
-            cv::Size        size,
-              cv::Mat       &out)      // out - derived from GMat (retval)
+    run(const cv::Mat           &in,       // in - derived from GMat
+        const fftwf_plan        &plan,
+              int               flag,
+              cv::Size          size,
+              std::vector<int>  inputDims,
+              int               channels,
+              cv::Mat           &out)      // out - derived from GMat (retval)
     {
         (void)size;
-        switch (flag){
-            case 1:
-                if (in.dims == 2)
-                    DEBUG_PRINTM(in);
-                    DEBUG_PRINTM(out);
-                    fftwf_execute_dft_r2c(planA, reinterpret_cast<float *>(in.data),
+        (void)flag;
+        
+        if (inputDims.size() > 0){
+            // returning the input/output matices into their original shapes for processing
+            cv::Mat resizedInputMat = cv::Mat(inputDims.size(), inputDims.data(),in.type(),reinterpret_cast<float *>(in.data));
+            cv::Mat resizedOutputMat = cv::Mat(out.rows, out.cols / (channels /2),CV_32FC(channels), out.ptr<float>(0));
+            fftwf_execute_dft_r2c(plan, reinterpret_cast<float *>(resizedInputMat.data),
+                            reinterpret_cast<fftwf_complex *>(resizedOutputMat.ptr<std::complex<float>>(0)));
+        } else {
+            fftwf_execute_dft_r2c(plan, reinterpret_cast<float *>(in.data),
                             reinterpret_cast<fftwf_complex *>(out.ptr<std::complex<float>>(0)));
-                    DEBUG_PRINTM(in);
-                    DEBUG_PRINTM(out);
-                #ifdef BIG_BATCH
-                else
-                    fftwf_execute_dft_r2c(planB, reinterpret_cast<float *>(in.data),
-                            reinterpret_cast<fftwf_complex *>(out.ptr<std::complex<float>>(0)));
-                #endif
-            break;
-            case 2:
-                
-                break;
-            default: // flag == 3
-                
-                break;
         }
+ 
         
     }
 };
@@ -186,18 +169,19 @@ void Fftw::forward(const cv::UMat &real_input, cv::UMat &complex_result)
     
     cv::GMat in;
     cv::GMat out;
-    out = GFftw::on(in, plan_f, 
-            #ifdef BIG_BATCH
-            plan_f_all_scales, 
-            #endif
-            1, cv::Size(outputMat.cols,outputMat.rows));
+    if (real_input.dims == 2)
+        out = GFftw::on(in, plan_f, 1, cv::Size(outputMat.cols,outputMat.rows), std::vector<int>(), 0);
+    #ifdef BIG_BATCH
+    else
+        out = GFftw::on(in, plan_f_all_scales, 1, cv::Size(outputMat.cols,outputMat.rows), std::vector<int>(), 0);        
+    #endif
     cv::GComputation fourierFwd(in, out);
     cv::gapi::GKernelPackage kernelPkg = cv::gapi::GKernelPackage();
     kernelPkg.include<GCPUFftw>();
     fourierFwd.apply(inputMat, outputMat, cv::compile_args(kernelPkg));
 }
 
-void Fftw::forward_window(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp)
+void Fftw::forward_window_cpu(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp)
 {
     Fft::forward_window(feat, complex_result, temp);
 
@@ -218,6 +202,42 @@ void Fftw::forward_window(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &t
     else
         fftwf_execute_dft_r2c(plan_fw_all_scales, in, out);
 #endif
+}
+
+void Fftw::forward_window(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp)
+{
+    Fft::forward_window(feat, complex_result, temp);
+
+    for (uint i = 0; i < uint(feat.size[0]); ++i) {
+        for (uint j = 0; j < uint(feat.size[1]); ++j) {
+            cv::UMat feat_plane = MatUtil::plane(i,j,feat);
+            cv::UMat temp_plane = MatUtil::plane(i,j,temp);
+            temp_plane = feat_plane.mul(m_window);
+        }
+    }
+    cv::Mat preInputMat = temp.getMat(cv::ACCESS_RW);
+    cv::Mat preOutputMat = complex_result.getMat(cv::ACCESS_RW);
+    // Cant feed multidimensional or multichanneled matrices to GAPI, so some reformatting is needed
+    cv::Mat inputMat = cv::Mat(preInputMat.size[0] * preInputMat.size[1] * preInputMat.size[2], preInputMat.size[3],
+            preInputMat.type(),preInputMat.ptr<float>());
+    cv::Mat outputMat = cv::Mat(preOutputMat.rows, preOutputMat.cols * (preOutputMat.channels() / 2), 
+            CV_32FC2, preOutputMat.ptr<float>());
+    cv::GMat in;
+    cv::GMat out;
+    if (feat.size[0] == 1)
+        out = GFftw::on(in, plan_fw, 1, cv::Size(outputMat.cols,outputMat.rows),
+                std::vector<int>({preInputMat.size[0], preInputMat.size[1], preInputMat.size[2], preInputMat.size[3]}),
+                        preOutputMat.channels());
+    #ifdef BIG_BATCH
+    else
+        out = GFftw::on(in, plan_fw_all_scales, 1, cv::Size(outputMat.cols,outputMat.rows),
+                std::vector<int>({preInputMat.size[0], preInputMat.size[1], preInputMat.size[2], preInputMat.size[3]}),
+                        preOutputMat.channels());       
+    #endif
+    cv::GComputation fourierFwdWin(in, out);
+    cv::gapi::GKernelPackage kernelPkg = cv::gapi::GKernelPackage();
+    kernelPkg.include<GCPUFftw>();
+    fourierFwdWin.apply(inputMat, outputMat, cv::compile_args(kernelPkg));
 }
 
 void Fftw::inverse(cv::UMat &complex_input, cv::UMat &real_result)

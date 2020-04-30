@@ -20,6 +20,8 @@ class Fftw : public Fft
     void inverse(cv::UMat &complex_input, cv::UMat &real_result);
     
     void forward_cpu(const cv::UMat &real_input, cv::UMat &complex_result);
+    void forward_window_cpu(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp);
+    
     ~Fftw();
 
 protected:
