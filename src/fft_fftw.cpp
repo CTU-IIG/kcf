@@ -146,7 +146,7 @@ void Fftw::set_window(const cv::UMat &window)
     m_window = window;
 }
 
-void Fftw::forward_cpu(const cv::UMat &real_input, cv::UMat &complex_result)
+void Fftw::forward(const cv::UMat &real_input, cv::UMat &complex_result)
 {
     Fft::forward(real_input, complex_result);
 
@@ -160,7 +160,7 @@ void Fftw::forward_cpu(const cv::UMat &real_input, cv::UMat &complex_result)
 #endif
 }
 
-void Fftw::forward(const cv::UMat &real_input, cv::UMat &complex_result)
+void Fftw::forward_cpu(const cv::UMat &real_input, cv::UMat &complex_result)
 {
     Fft::forward(real_input, complex_result);
     
@@ -181,30 +181,27 @@ void Fftw::forward(const cv::UMat &real_input, cv::UMat &complex_result)
     fourierFwd.apply(inputMat, outputMat, cv::compile_args(kernelPkg));
 }
 
-void Fftw::forward_window_cpu(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp)
+void Fftw::forward_window(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp)
 {
     Fft::forward_window(feat, complex_result, temp);
 
+    cv::UMat tempRes;
     for (uint i = 0; i < uint(feat.size[0]); ++i) {
         for (uint j = 0; j < uint(feat.size[1]); ++j) {
             cv::UMat feat_plane = MatUtil::plane(i,j,feat);
             cv::UMat temp_plane = MatUtil::plane(i,j,temp);
             temp_plane = feat_plane.mul(m_window);
+            
+            tempRes = cv::UMat::zeros(complex_result.rows, complex_result.cols, CV_32FC2);
+            fftwf_execute_dft_r2c(plan_f, reinterpret_cast<float *>(temp_plane.getMat(cv::ACCESS_RW).data),
+                              reinterpret_cast<fftwf_complex *>(tempRes.getMat(cv::ACCESS_RW).ptr<std::complex<float>>(0)));
+            MatUtil::set_channel(0, int(j * 2), tempRes, complex_result);
+            MatUtil::set_channel(1, int(j * 2 + 1), tempRes, complex_result);
         }
     }
-    
-    float *in = temp.getMat(cv::ACCESS_RW).ptr<float>();
-    fftwf_complex *out = reinterpret_cast<fftwf_complex *>(complex_result.getMat(cv::ACCESS_RW).ptr<std::complex<float>>(0));
-
-    if (feat.size[0] == 1)
-        fftwf_execute_dft_r2c(plan_fw, in, out);
-#ifdef BIG_BATCH
-    else
-        fftwf_execute_dft_r2c(plan_fw_all_scales, in, out);
-#endif
 }
 
-void Fftw::forward_window(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp)
+void Fftw::forward_window_cpu(cv::UMat &feat, cv::UMat & complex_result, cv::UMat &temp)
 {
     Fft::forward_window(feat, complex_result, temp);
 
