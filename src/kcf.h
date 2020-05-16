@@ -5,8 +5,8 @@
 #include <vector>
 #include <memory>
 #include "fhog.hpp"
+#include "debug.h"
 
-#include "complexmat.hpp"
 #ifdef CUFFT
 #include "cuda_error_check.hpp"
 #include <cuda_runtime.h>
@@ -78,12 +78,12 @@ public:
     ~KCF_Tracker();
 
     // Init/re-init methods
-    void init(cv::Mat & img, const cv::Rect & bbox, int fit_size_x = -1, int fit_size_y = -1);
-    void setTrackerPose(BBox_c & bbox, cv::Mat & img, int fit_size_x = -1, int fit_size_y = -1);
+    void init(cv::UMat & img, const cv::Rect & bbox, int fit_size_x = -1, int fit_size_y = -1);
+    void setTrackerPose(BBox_c & bbox, cv::UMat & img, int fit_size_x = -1, int fit_size_y = -1);
     void updateTrackerPosition(BBox_c & bbox);
 
     // frame-to-frame object tracking
-    void track(cv::Mat & img);
+    void track(cv::UMat & img);
     BBox_c getBBox();
     double getFilterResponse() const; // Measure of tracking accuracy
 
@@ -133,24 +133,30 @@ private:
         cv::Size feature_size;
         uint height, width, n_feats;
     public:
-        ComplexMat yf {height, width, 1};
-        ComplexMat model_alphaf {height, width, 1};
-        ComplexMat model_alphaf_num {height, width, 1};
-        ComplexMat model_alphaf_den {height, width, 1};
-        ComplexMat model_xf {height, width, n_feats};
-        ComplexMat xf {height, width, n_feats};
+        
+        // Complex matrix now equals 2*k channels matrix by design
+        cv::UMat yf = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
+        cv::UMat model_alphaf = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
+        cv::UMat model_alphaf_num = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
+        cv::UMat model_alphaf_den = cv::UMat::zeros((int) height, (int) width, CV_32FC2);
+        cv::UMat model_xf;
+        cv::UMat xf;
 
-        // Temporary variables for trainig
-        MatScaleFeats patch_feats{1, n_feats, feature_size};
-        MatScaleFeats temp{1, n_feats, feature_size};
-
-
-
+        cv::UMat patch_feats{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
+        cv::UMat temp{ 4, std::vector<int>({1, int(n_feats), feature_size.height, feature_size.width}).data(), CV_32F};
+        
+        
         Model(cv::Size feature_size, uint _n_feats)
             : feature_size(feature_size)
             , height(Fft::freq_size(feature_size).height)
             , width(Fft::freq_size(feature_size).width)
-            , n_feats(_n_feats) {}
+            , n_feats(_n_feats) {
+            
+        cv::Mat model_xf_temp = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
+        cv::Mat xf_temp = cv::Mat::zeros((int) height, (int) width, CV_32FC(n_feats*2));
+        model_xf = model_xf_temp.getUMat(cv::ACCESS_RW);
+        xf = xf_temp.getUMat(cv::ACCESS_RW);
+        }
     };
 
     std::unique_ptr<Model> model;
@@ -158,33 +164,36 @@ private:
     class GaussianCorrelation {
       public:
         GaussianCorrelation(uint num_scales, uint num_feats, cv::Size size)
-            : xf_sqr_norm(num_scales)
-            , xyf(Fft::freq_size(size), num_feats, num_scales)
-            , ifft_res(num_scales, size)
-            , k(num_scales, size)
-        {}
-        void operator()(ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
+        {
+                cv::Size temp = Fft::freq_size(size);
+                xyf = cv::UMat(3, std::vector<int>({(int) num_scales, temp.height, temp.width}).data(), CV_32FC(num_feats*2));
+                ifft_res = cv::UMat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
+                k = cv::UMat(3, std::vector<int>({(int) num_scales, size.height, size.width}).data(), CV_32F);
+            }
+        void operator()(cv::UMat &result, cv::UMat &xf, cv::UMat &yf, double sigma, bool auto_correlation, const KCF_Tracker &kcf);
 
       private:
-        DynMem xf_sqr_norm;
-        DynMem yf_sqr_norm{1};
-        ComplexMat xyf;
-        MatScales ifft_res;
-        MatScales k;
+        double xf_sqr_norm;
+        double yf_sqr_norm;
+        cv::UMat xyf;
+        cv::UMat ifft_res;
+        cv::UMat k;
     };
 
     //helping functions
     void scale_track(ThreadCtx &vars, cv::Mat &input_rgb, cv::Mat &input_gray);
     cv::Mat get_subwindow(const cv::Mat &input, int cx, int cy, int size_x, int size_y, double angle) const;
+    cv::UMat gaussian_shaped_labels_umat(double sigma, int dim1, int dim2);
     cv::Mat gaussian_shaped_labels(double sigma, int dim1, int dim2);
     std::unique_ptr<GaussianCorrelation> gaussian_correlation;
     cv::Mat circshift(const cv::Mat &patch, int x_rot, int y_rot) const;
+    cv::UMat circshift(const cv::UMat &patch, int x_rot, int y_rot) const;
     cv::Mat cosine_window_function(int dim1, int dim2);
     cv::Mat get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::Mat *dbg_patch, int cx, int cy, int size_x, int size_y, double scale, double angle) const;
     cv::Point2f sub_pixel_peak(cv::Point &max_loc, cv::Mat &response) const;
     double sub_grid_scale(uint index);
-    void resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray);
-    void train(cv::Mat input_rgb, cv::Mat input_gray, double interp_factor);
+    void resizeImgs(cv::UMat &input_rgb, cv::UMat &input_gray);
+    void train(cv::UMat input_rgb, cv::UMat input_gray, double interp_factor);
     double findMaxReponse(uint &max_idx, cv::Point2d &new_location) const;
     double sub_grid_angle(uint max_index);
 };

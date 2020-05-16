@@ -2,9 +2,7 @@
 #define SCALE_VARS_HPP
 
 #include <future>
-#include "dynmem.hpp"
 #include "kcf.h"
-#include "complexmat.hpp"
 #include <vector>
 
 class KCF_Tracker;
@@ -52,13 +50,22 @@ struct ThreadCtx {
 #else
         , scale(scale)
         , angle(angle)
-        {}
+        {
+            cv::Mat patch_feat{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
+            cv::Mat tmp{ 4, std::vector<int>({ int(num_scales * num_angles), int(num_features), roi.height, roi.width}).data(), CV_32F};
+            cv::Mat zf_Tmp = cv::Mat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC(num_features*2));
+            cv::Mat resp = cv::Mat::zeros(3, std::vector<int>({int(num_scales * num_angles), (int) roi.height, (int) roi.width}).data(), CV_32F);
+            patch_feats = patch_feat.getUMat(cv::ACCESS_RW);
+            temp = tmp.getUMat(cv::ACCESS_RW);
+            zf = zf_Tmp.getUMat(cv::ACCESS_RW);
+            response = resp.getUMat(cv::ACCESS_RW);
+        }
 #endif
 
 
     ThreadCtx(ThreadCtx &&) = default;
 
-    void track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray);
+    void track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &input_gray);
 private:
     cv::Size roi;
     uint num_features;
@@ -66,22 +73,20 @@ private:
     uint num_angles;
     cv::Size freq_size = Fft::freq_size(roi);
 
-    MatScaleFeats patch_feats{num_scales * num_angles, num_features, roi};
-    MatScaleFeats temp{num_scales * num_angles, num_features, roi};
-
+    cv::UMat patch_feats;
+    cv::UMat temp;
+    cv::UMat zf;
+    cv::UMat kzf = cv::UMat::zeros((int) freq_size.height, (int) freq_size.width, CV_32FC2);
+    
     KCF_Tracker::GaussianCorrelation gaussian_correlation{num_scales * num_angles, num_features, roi};
-
-    MatScales ifft2_res{num_scales * num_angles, roi};
-
-    ComplexMat zf{uint(freq_size.height), uint(freq_size.width), num_features, num_scales * num_angles};
-    ComplexMat kzf{uint(freq_size.height), uint(freq_size.width), 1, num_scales * num_angles};
-
+    
+    
 public:
 #ifdef ASYNC
     std::future<void> async_res;
 #endif
 
-    MatScales response{num_scales * num_angles, roi};
+    cv::UMat response;
 
     struct Max {
         cv::Point2i loc;

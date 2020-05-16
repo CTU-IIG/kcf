@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-set(KCF_LIB_SRC kcf.cpp kcf.h fft.cpp threadctx.hpp pragmas.h dynmem.hpp debug.cpp complexmat.hpp)
+set(KCF_LIB_SRC kcf.cpp kcf.h fft.cpp threadctx.hpp pragmas.h debug.cpp)
 
 find_package(PkgConfig)
 
@@ -49,12 +49,6 @@ ELSEIF(FFT STREQUAL "cuFFT")
     ENDIF()
 ELSE()
   MESSAGE(FATAL_ERROR "Invalid FFT implementation selected")
-ENDIF()
-
-IF(FFT STREQUAL "cuFFT")
-  list(APPEND KCF_LIB_SRC complexmat.cu)
-ELSE()
-  list(APPEND KCF_LIB_SRC complexmat.cpp)
 ENDIF()
 
 IF((FFT STREQUAL "OpenCV") AND BIG_BATCH)

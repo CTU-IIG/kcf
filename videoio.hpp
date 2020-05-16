@@ -11,6 +11,7 @@ public:
     virtual cv::Rect getInitRectangle() = 0;
     virtual void outputBoundingBox(const cv::Rect & bbox) = 0;
     virtual int getNextFileName(char * fName) = 0;
+    virtual int getNextImage(cv::UMat & img) = 0;
     virtual int getNextImage(cv::Mat & img) = 0;
     virtual int getImageNum() const = 0;
 };
@@ -22,7 +23,8 @@ public:
 
     cv::Rect getInitRectangle() override;
     void outputBoundingBox(const cv::Rect & bbox) override;
-    int getNextFileName(char * fName) override;
+    int getNextFileName(char * fName) override;    
+    int getNextImage(cv::UMat &img) override;
     int getNextImage(cv::Mat & img) override;
     int getImageNum() const override;
 

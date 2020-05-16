@@ -69,6 +69,13 @@ int FileIO::getNextImage(cv::Mat &img)
     return img.empty() ? 0 : 1;
 }
 
+int FileIO::getNextImage(cv::UMat &img)
+{
+    capture >> img;
+    num++;
+    return img.empty() ? 0 : 1;
+}
+
 int FileIO::getImageNum() const
 {
     return num;

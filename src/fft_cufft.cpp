@@ -53,67 +53,74 @@ void cuFFT::init(unsigned width, unsigned height, unsigned num_of_feats, unsigne
 #endif
 }
 
-void cuFFT::set_window(const MatDynMem &window)
+void cuFFT::set_window(const cv::Mat &window)
 {
     Fft::set_window(window);
     m_window = window;
 }
 
-void cuFFT::forward(const MatScales &real_input, ComplexMat &complex_result)
+void cuFFT::forward(const cv::Mat &real_input, cv::Mat &complex_result)
 {
-    Fft::forward(real_input, complex_result);
-    auto in = static_cast<cufftReal *>(const_cast<MatScales&>(real_input).deviceMem());
-
-    if (real_input.size[0] == 1)
-        cudaErrorCheck(cufftExecR2C(plan_f, in, complex_result.get_dev_data()));
-#ifdef BIG_BATCH
-    else
-        cudaErrorCheck(cufftExecR2C(plan_f_all_scales, in, complex_result.get_dev_data()));
-#endif
+    (void)real_input;
+    (void)complex_result;
+//    Fft::forward(real_input, complex_result);
+//        auto in = static_cast<cufftReal *>(const_cast<MatScales&>(real_input).deviceMem());
+//
+//        if (real_input.size[0] == 1)
+//            cudaErrorCheck(cufftExecR2C(plan_f, in, complex_result.get_dev_data()));
+//    #ifdef BIG_BATCH
+//        else
+//            cudaErrorCheck(cufftExecR2C(plan_f_all_scales, in, complex_result.get_dev_data()));
+//    #endif
 }
 
-void cuFFT::forward_window(MatScaleFeats &feat, ComplexMat &complex_result, MatScaleFeats &temp)
+void cuFFT::forward_window(cv::Mat &feat, cv::Mat &complex_result, cv::Mat &temp)
 {
-    Fft::forward_window(feat, complex_result, temp);
-
-    cufftReal *temp_data = temp.deviceMem();
-    uint n_scales = feat.size[0];
-
-    for (uint s = 0; s < n_scales; ++s) {
-        for (uint ch = 0; ch < uint(feat.size[1]); ++ch) {
-            cv::Mat feat_plane = feat.plane(s, ch);
-            cv::Mat temp_plane = temp.plane(s, ch);
-            temp_plane = feat_plane.mul(m_window);
-        }
-    }
-
-    if (n_scales == 1)
-        cudaErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_dev_data()));
-#ifdef BIG_BATCH
-    else
-        cudaErrorCheck(cufftExecR2C(plan_fw_all_scales, temp_data, complex_result.get_dev_data()));
-#endif
+    (void)feat;
+    (void)complex_result;
+    (void)temp;
+//    Fft::forward_window(feat, complex_result, temp);
+//
+//        cufftReal *temp_data = temp.deviceMem();
+//        uint n_scales = feat.size[0];
+//
+//        for (uint s = 0; s < n_scales; ++s) {
+//            for (uint ch = 0; ch < uint(feat.size[1]); ++ch) {
+//                cv::Mat feat_plane = feat.plane(s, ch);
+//                cv::Mat temp_plane = temp.plane(s, ch);
+//                temp_plane = feat_plane.mul(m_window);
+//            }
+//        }
+//
+//        if (n_scales == 1)
+//            cudaErrorCheck(cufftExecR2C(plan_fw, temp_data, complex_result.get_dev_data()));
+//    #ifdef BIG_BATCH
+//        else
+//            cudaErrorCheck(cufftExecR2C(plan_fw_all_scales, temp_data, complex_result.get_dev_data()));
+//    #endif
 }
 
-void cuFFT::inverse(ComplexMat &complex_input, MatScales &real_result)
+void cuFFT::inverse(cv::Mat &complex_input, cv::Mat &real_result)
 {
-    Fft::inverse(complex_input, real_result);
-
-    uint n_channels = complex_input.n_channels;
-    cufftComplex *in = reinterpret_cast<cufftComplex *>(complex_input.get_dev_data());
-    cufftReal *out = real_result.deviceMem();
-    float alpha = 1.0 / (m_width * m_height);
-
-    if (n_channels == 1)
-        cudaErrorCheck(cufftExecC2R(plan_i_1ch, in, out));
-#ifdef BIG_BATCH
-    else
-        cudaErrorCheck(cufftExecC2R(plan_i_all_scales, in, out));
-#endif
-    cudaErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
-    // The result is a cv::Mat, which will be accesses by CPU, so we
-    // must synchronize with the GPU here
-    CudaSafeCall(cudaStreamSynchronize(cudaStreamPerThread));
+    (void)complex_input;
+    (void)real_result;
+//    Fft::inverse(complex_input, real_result);
+//
+//    uint n_channels = complex_input.n_channels;
+//    cufftComplex *in = reinterpret_cast<cufftComplex *>(complex_input.get_dev_data());
+//    cufftReal *out = real_result.deviceMem();
+//    float alpha = 1.0 / (m_width * m_height);
+//
+//    if (n_channels == 1)
+//        cudaErrorCheck(cufftExecC2R(plan_i_1ch, in, out));
+//#ifdef BIG_BATCH
+//    else
+//        cudaErrorCheck(cufftExecC2R(plan_i_all_scales, in, out));
+//#endif
+//    cudaErrorCheck(cublasSscal(cublas, real_result.total(), &alpha, out, 1));
+//    // The result is a cv::Mat, which will be accesses by CPU, so we
+//    // must synchronize with the GPU here
+//    CudaSafeCall(cudaStreamSynchronize(cudaStreamPerThread));
 }
 
 cuFFT::~cuFFT()

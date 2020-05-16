@@ -1,10 +1,18 @@
 #include "kcf.h"
+#include "matutil.h"
+#include "debug.h"
+#include <opencv2/core/core.hpp>
 #include <numeric>
 #include <thread>
 #include <algorithm>
 #include "threadctx.hpp"
 #include "debug.h"
 #include <limits>
+#include <opencv/highgui.h>
+#include <opencv2/gapi.hpp>
+#include <opencv2/gapi/core.hpp>
+#include <opencv2/gapi/imgproc.hpp>
+#include <opencv2/core/core_c.h>
 
 #ifdef OPENMP
 #include <omp.h>
@@ -66,36 +74,56 @@ KCF_Tracker::~KCF_Tracker()
     delete &fft;
 }
 
-void KCF_Tracker::train(cv::Mat input_rgb, cv::Mat input_gray, double interp_factor)
+void KCF_Tracker::train(cv::UMat input_rgb, cv::UMat input_gray, double interp_factor)
 {
     TRACE("");
 
     // obtain a sub-window for training
-    get_features(input_rgb, input_gray, nullptr, p_current_center.x, p_current_center.y,
+    cv::Mat inputRgbTemp = input_rgb.getMat(cv::ACCESS_RW);
+    cv::Mat inputGrayTemp = input_gray.getMat(cv::ACCESS_RW);
+    get_features(inputRgbTemp, inputGrayTemp, nullptr, p_current_center.x, p_current_center.y,
                  p_windows_size.width, p_windows_size.height,
-                 p_current_scale, p_current_angle).copyTo(model->patch_feats.scale(0));
-    DEBUG_PRINT(model->patch_feats);
+                 p_current_scale, p_current_angle).getUMat(cv::ACCESS_RW).copyTo(MatUtil::scale(0, model->patch_feats));
+            
+    DEBUG_PRINT(model->patch_feats);    
     fft.forward_window(model->patch_feats, model->xf, model->temp);
     DEBUG_PRINTM(model->xf);
-    model->model_xf = model->model_xf * (1. - interp_factor) + model->xf * interp_factor;
+    
+    cv::Mat tempModelXf = model->model_xf.getMat(cv::ACCESS_RW);
+    cv::Mat tempXf = model->xf.getMat(cv::ACCESS_RW);
+    
+    cv::GMat in;
+    cv::GMat in2;
+    cv::GMat tempIn = cv::gapi::mulC(in, (1. - interp_factor));
+    cv::GMat tempIn2 = cv::gapi::mulC(in2, interp_factor);
+    cv::GMat out = cv::gapi::add(tempIn, tempIn2);
+    cv::GComputation mulAdd(cv::GIn(in, in2), cv::GOut(out));
+    mulAdd.apply(cv::gin(tempModelXf, tempXf), cv::gout(tempModelXf));
+    
     DEBUG_PRINTM(model->model_xf);
-
-    if (m_use_linearkernel) {
-        ComplexMat xfconj = model->xf.conj();
-        model->model_alphaf_num = xfconj.mul(model->yf);
-        model->model_alphaf_den = (model->xf * xfconj);
+    
+    
+    if (m_use_linearkernel) {        
+        // Unused feature
+        
+//        cv::Mat xfconj = MatUtil::conj(model->xf);
+//        model->model_alphaf_num = MatUtil::mul_matn_mat1(xfconj, model->yf);
+//        model->model_alphaf_den = MatUtil::mul_matn_matn(model->xf, xfconj);
     } else {
         // Kernel Ridge Regression, calculate alphas (in Fourier domain)
         cv::Size sz(Fft::freq_size(feature_size));
-        ComplexMat kf(sz.height, sz.width, 1);
+        cv::UMat kf = cv::UMat(sz.height, sz.width, CV_32FC2);
         (*gaussian_correlation)(kf, model->model_xf, model->model_xf, p_kernel_sigma, true, *this);
-        DEBUG_PRINTM(kf);
-        model->model_alphaf_num = model->yf * kf;
-        model->model_alphaf_den = kf * (kf + p_lambda);
+        DEBUG_PRINTM(kf);        
+        model->model_alphaf_num = MatUtil::mul_matn_matn(model->yf, kf);
+        cv::UMat addedMat = MatUtil::add_scalar(kf, p_lambda);
+        model->model_alphaf_den = MatUtil::mul_matn_matn(kf, addedMat);
+
     }
-    model->model_alphaf = model->model_alphaf_num / model->model_alphaf_den;
+    model->model_alphaf = MatUtil::divide_matn_matn(model->model_alphaf_num, model->model_alphaf_den);
     DEBUG_PRINTM(model->model_alphaf);
     //        p_model_alphaf = p_yf / (kf + p_lambda);   //equation for fast training
+
 }
 
 static int round_pw2_down(int x)
@@ -107,11 +135,11 @@ static int round_pw2_down(int x)
 }
 
 
-void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int fit_size_y)
+void KCF_Tracker::init(cv::UMat &img, const cv::Rect &bbox, int fit_size_x, int fit_size_y)
 {
     __dbgTracer.debug = m_debug;
     TRACE("");
-
+    
     // check boundary, enforce min size
     double x1 = bbox.x, x2 = bbox.x + bbox.width, y1 = bbox.y, y2 = bbox.y + bbox.height;
     if (x1 < 0) x1 = 0.;
@@ -147,20 +175,35 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
     p_init_pose.cx = x1 + p_init_pose.w / 2.;
     p_init_pose.cy = y1 + p_init_pose.h / 2.;
 
-    cv::Mat input_gray, input_rgb = img.clone();
+    
+    cv::UMat input_rgb = img.clone();
+    cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+    cv::Mat tempGray;
+    
+    cv::GMat inRgb;
+    cv::GMat outGray;
     if (img.channels() == 3) {
-        cv::cvtColor(img, input_gray, CV_BGR2GRAY);
-        input_gray.convertTo(input_gray, CV_32FC1);
-    } else
-        img.convertTo(input_gray, CV_32FC1);
+        outGray = cv::gapi::BGR2Gray(inRgb);
+        cv::GMat tempGapiGray = cv::gapi::convertTo(outGray, CV_32FC1);
+        outGray = tempGapiGray;
+    } else {
+        outGray = cv::gapi::convertTo(inRgb, CV_32FC1);
+    }
+    cv::GComputation cvtToGray(inRgb, outGray);
+    cvtToGray.apply(tempRgb, tempGray);
+    cv::UMat input_gray = tempGray.getUMat(cv::ACCESS_RW);
 
     // don't need too large image
     if (p_init_pose.w * p_init_pose.h > 100. * 100.) {
         std::cout << "resizing image by factor of " << 1 / p_downscale_factor << std::endl;
         p_resize_image = true;
         p_init_pose.scale(p_downscale_factor);
-        cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-        cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GMat inRgb2;
+        cv::GMat inGray2;
+        cv::GMat outRgb2 = cv::gapi::resize(inRgb2, cv::Size(0, 0),p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GMat outGray2 = cv::gapi::resize(inGray2, cv::Size(0, 0),p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GComputation resizeBoth(cv::GIn(inRgb2,inGray2), cv::GOut(outRgb2, outGray2));
+        resizeBoth.apply(cv::gin(tempRgb, tempGray) , cv::gout(tempRgb, tempGray));
     }
 
     // compute win size + fit to fhog cell size
@@ -230,19 +273,23 @@ void KCF_Tracker::init(cv::Mat &img, const cv::Rect &bbox, int fit_size_x, int f
            * p_output_sigma_factor / p_cell_size;
 
     fft.init(feature_size.width, feature_size.height, p_num_of_feats, p_num_scales * p_num_angles);
-    fft.set_window(MatDynMem(cosine_window_function(feature_size.width, feature_size.height)));
+    fft.set_window(cosine_window_function(feature_size.width, feature_size.height).getUMat(cv::ACCESS_RW));
 
     // window weights, i.e. labels
-    MatScales gsl(1, feature_size);
-    gaussian_shaped_labels(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl.plane(0));
-    fft.forward(gsl, model->yf);
+    cv::Mat gsl(feature_size,CV_32F);
+    gaussian_shaped_labels(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl);
+    cv::UMat gslUmat = gsl.getUMat(cv::ACCESS_RW);
+//gaussian_shaped_labels_umat(p_output_sigma, feature_size.width, feature_size.height).copyTo(gsl);
+    
+    fft.forward(gslUmat, model->yf);
+    
     DEBUG_PRINTM(model->yf);
-
+    
     // train initial model
     train(input_rgb, input_gray, 1.0);
 }
 
-void KCF_Tracker::setTrackerPose(BBox_c &bbox, cv::Mat &img, int fit_size_x, int fit_size_y)
+void KCF_Tracker::setTrackerPose(BBox_c &bbox, cv::UMat &img, int fit_size_x, int fit_size_y)
 {
     init(img, bbox.get_rect(), fit_size_x, fit_size_y);
 }
@@ -276,11 +323,17 @@ double KCF_Tracker::getFilterResponse() const
     return this->max_response;
 }
 
-void KCF_Tracker::resizeImgs(cv::Mat &input_rgb, cv::Mat &input_gray)
+void KCF_Tracker::resizeImgs(cv::UMat &input_rgb, cv::UMat &input_gray)
 {
     if (p_resize_image) {
-        cv::resize(input_gray, input_gray, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
-        cv::resize(input_rgb, input_rgb, cv::Size(0, 0), p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::Mat tempGray = input_gray.getMat(cv::ACCESS_RW);
+        cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+        cv::GMat inRgb;
+        cv::GMat inGray;
+        cv::GMat outRgb = cv::gapi::resize(inRgb, cv::Size(0, 0),p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GMat outGray = cv::gapi::resize(inGray, cv::Size(0, 0),p_downscale_factor, p_downscale_factor, cv::INTER_AREA);
+        cv::GComputation resizeBoth(cv::GIn(inRgb,inGray), cv::GOut(outRgb, outGray));
+        resizeBoth.apply(cv::gin(tempRgb, tempGray) , cv::gout(tempRgb, tempGray));
     }
 }
 
@@ -320,9 +373,14 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
     max_idx = std::distance(vec.begin(), max_it);
 
     cv::Point2i max_response_pt = IF_BIG_BATCH(max_it->loc, max_it->max.loc);
-    cv::Mat max_response_map    = IF_BIG_BATCH(d->threadctxs[0].response.plane(max_idx),
-                                               max_it->response.plane(0));
-
+//    cv::Mat max_response_map    = IF_BIG_BATCH(d->threadctxs[0].response.plane(max_idx),
+//                                               max_it->response.plane(0));
+    
+    cv::Mat tempResponse = IF_BIG_BATCH(cv::Mat(), max_it->response.getMat(cv::ACCESS_RW));
+    cv::Mat max_response_map = IF_BIG_BATCH(MatUtil::plane(max_idx, d->threadctxs[0].response.getMat(cv::ACCESS_RW)),
+                                               MatUtil::plane(0, tempResponse));
+    
+    
     DEBUG_PRINTM(max_response_map);
     DEBUG_PRINT(max_response_pt);
 
@@ -354,7 +412,9 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
                     cross.x = cross.x / fit_size.width  * tmp.cols + tmp.cols / 2;
                     cross.y = cross.y / fit_size.height * tmp.rows + tmp.rows / 2;
                 } else {
-                    cv::cvtColor(threadctx.response.plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0)),
+//                    cv::cvtColor(threadctx.response.plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0)),
+//                            tmp, cv::COLOR_GRAY2BGR);
+                    cv::cvtColor(MatUtil::plane(IF_BIG_BATCH(threadctx.max.getIdx(i, j), 0), threadctx.response),
                             tmp, cv::COLOR_GRAY2BGR);
                     tmp /= max; // Normalize to 1
                     cross += cv::Point2d(tmp.size())/2;
@@ -383,18 +443,28 @@ double KCF_Tracker::findMaxReponse(uint &max_idx, cv::Point2d &new_location) con
     return max;
 }
 
-void KCF_Tracker::track(cv::Mat &img)
+void KCF_Tracker::track(cv::UMat &img)
 {
     __dbgTracer.debug = m_debug;
     TRACE("");
 
-    cv::Mat input_gray, input_rgb = img.clone();
+    cv::UMat input_rgb = img.clone();
+    cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+    cv::Mat tempGray;
+    
+    cv::GMat inRgb;
+    cv::GMat outGray;
     if (img.channels() == 3) {
-        cv::cvtColor(img, input_gray, CV_BGR2GRAY);
-        input_gray.convertTo(input_gray, CV_32FC1);
-    } else
-        img.convertTo(input_gray, CV_32FC1);
-
+        outGray = cv::gapi::BGR2Gray(inRgb);
+        cv::GMat tempGapiGray = cv::gapi::convertTo(outGray, CV_32FC1);
+        outGray = tempGapiGray;
+    } else {
+        outGray = cv::gapi::convertTo(inRgb, CV_32FC1);
+    }
+    cv::GComputation cvtToGray(inRgb, outGray);
+    cvtToGray.apply(tempRgb, tempGray);
+    cv::UMat input_gray = tempGray.getUMat(cv::ACCESS_RW);
+    
     // don't need too large image
     resizeImgs(input_rgb, input_gray);
 
@@ -407,6 +477,8 @@ void KCF_Tracker::track(cv::Mat &img)
         it.async_res.wait();
 
 #else  // !ASYNC
+        
+    // Usually tracks 15 scale/angle combinations
     NORMAL_OMP_PARALLEL_FOR
     for (uint i = 0; i < d->threadctxs.size(); ++i)
         d->threadctxs[i].track(*this, input_rgb, input_gray);
@@ -415,7 +487,6 @@ void KCF_Tracker::track(cv::Mat &img)
     cv::Point2d new_location;
     uint max_idx;
     max_response = findMaxReponse(max_idx, new_location);
-
     double angle_change = m_use_subgrid_angle ? sub_grid_angle(max_idx)
                                               : d->IF_BIG_BATCH(threadctxs[0].max, threadctxs).angle(max_idx);
     p_current_angle += angle_change;
@@ -445,53 +516,59 @@ void KCF_Tracker::track(cv::Mat &img)
     train(input_rgb, input_gray, p_interp_factor);
 }
 
-void ThreadCtx::track(const KCF_Tracker &kcf, cv::Mat &input_rgb, cv::Mat &input_gray)
+void ThreadCtx::track(const KCF_Tracker &kcf, cv::UMat &input_rgb, cv::UMat &input_gray)
 {
     TRACE("");
-
+    
+    cv::Mat tempRgb = input_rgb.getMat(cv::ACCESS_RW);
+    cv::Mat tempGray = input_gray.getMat(cv::ACCESS_RW);
+    
     BIG_BATCH_OMP_PARALLEL_FOR
     for (uint i = 0; i < IF_BIG_BATCH(max.size(), 1); ++i)
     {
-        kcf.get_features(input_rgb, input_gray, &dbg_patch IF_BIG_BATCH([i],),
+        kcf.get_features(tempRgb, tempGray, &dbg_patch IF_BIG_BATCH([i],),
                          kcf.p_current_center.x, kcf.p_current_center.y,
                          kcf.p_windows_size.width, kcf.p_windows_size.height,
                          kcf.p_current_scale * IF_BIG_BATCH(max.scale(i), scale),
                          kcf.p_current_angle + IF_BIG_BATCH(max.angle(i), angle))
-                .copyTo(patch_feats.scale(i));
-        DEBUG_PRINT(patch_feats.scale(i));
+                .getUMat(cv::ACCESS_RW)
+                .copyTo(MatUtil::scale(i, patch_feats));
+        DEBUG_PRINT(MatUtil::scale(i, patch_feats));
     }
-
+    
     kcf.fft.forward_window(patch_feats, zf, temp);
     DEBUG_PRINTM(zf);
-
+    
     if (kcf.m_use_linearkernel) {
-        kzf = zf.mul(kcf.model->model_alphaf).sum_over_channels();
+        // Unused feature
     } else {
         gaussian_correlation(kzf, zf, kcf.model->model_xf, kcf.p_kernel_sigma, false, kcf);
         DEBUG_PRINTM(kzf);
-        kzf = kzf.mul(kcf.model->model_alphaf);
+        kzf = MatUtil::mul_matn_mat1(kzf, kcf.model->model_alphaf);
     }
+    DEBUG_PRINTM(kzf);
     kcf.fft.inverse(kzf, response);
-
     DEBUG_PRINTM(response);
-
+    
     /* target location is at the maximum response. we must take into
     account the fact that, if the target doesn't move, the peak
     will appear at the top-left corner, not at the center (this is
     discussed in the paper). the responses wrap around cyclically. */
+    
     double min_val, max_val;
     cv::Point2i min_loc, max_loc;
 #ifdef BIG_BATCH
     for (size_t i = 0; i < max.size(); ++i) {
-        cv::minMaxLoc(response.plane(i), &min_val, &max_val, &min_loc, &max_loc);
+        cv::minMaxLoc(MatUtil::plane(i, response), &min_val, &max_val, &min_loc, &max_loc);
         DEBUG_PRINT(max_loc);
         double weight = max.scale(i) < 1. ? max.scale(i) : 1. / max.scale(i);
         max[i].response = max_val * weight;
         max[i].loc = max_loc;
     }
-#else
-    cv::minMaxLoc(response.plane(0), &min_val, &max_val, &min_loc, &max_loc);
-
+#else    
+      
+    //  EDIT HERE to change which data (response) is used for determining best match of the tracking rectangle
+    cv::minMaxLoc(MatUtil::plane(0, response), &min_val, &max_val, &min_loc, &max_loc);
     DEBUG_PRINT(max_loc);
     DEBUG_PRINT(max_val);
 
@@ -511,14 +588,18 @@ cv::Mat KCF_Tracker::get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::M
     cv::Mat patch_gray = get_subwindow(input_gray, cx, cy, scaled.width, scaled.height, angle);
     cv::Mat patch_rgb = get_subwindow(input_rgb, cx, cy, scaled.width, scaled.height, angle);
 
+    cv::GMat rszIn;
+    cv::GMat rszOut;
     // resize to default size
     if (scaled.area() > fit_size.area()) {
         // if we downsample use  INTER_AREA interpolation
         // note: this is just a guess - we may downsample in X and upsample in Y (or vice versa)
-        cv::resize(patch_gray, patch_gray, fit_size, 0., 0., cv::INTER_AREA);
+        rszOut = cv::gapi::resize(rszIn, fit_size, 0., 0., cv::INTER_AREA);
     } else {
-        cv::resize(patch_gray, patch_gray, fit_size, 0., 0., cv::INTER_LINEAR);
+        rszOut = cv::gapi::resize(rszIn, fit_size, 0., 0., cv::INTER_LINEAR);
     }
+    cv::GComputation resizeFit(rszIn, rszOut);
+    resizeFit.apply(patch_gray, patch_gray);
 
     // get hog(Histogram of Oriented Gradients) features
     std::vector<cv::Mat> hog_feat = FHoG::extract(patch_gray, 2, p_cell_size, 9);
@@ -527,12 +608,16 @@ cv::Mat KCF_Tracker::get_features(cv::Mat &input_rgb, cv::Mat &input_gray, cv::M
     std::vector<cv::Mat> color_feat;
     if ((m_use_color || m_use_cnfeat) && input_rgb.channels() == 3) {
         // resize to default size
+        cv::GMat rszIn2;
+        cv::GMat rszOut2;
         if (scaled.area() > (fit_size / p_cell_size).area()) {
             // if we downsample use  INTER_AREA interpolation
-            cv::resize(patch_rgb, patch_rgb, fit_size / p_cell_size, 0., 0., cv::INTER_AREA);
+            rszOut2 = cv::gapi::resize(rszIn2, fit_size / p_cell_size, 0., 0., cv::INTER_AREA);
         } else {
-            cv::resize(patch_rgb, patch_rgb, fit_size / p_cell_size, 0., 0., cv::INTER_LINEAR);
+            rszOut2 = cv::gapi::resize(rszIn2, fit_size / p_cell_size, 0., 0., cv::INTER_LINEAR);
         }
+        cv::GComputation resizeFitCell(rszIn2, rszOut2);
+        resizeFitCell.apply(patch_rgb, patch_rgb);
     }
 
     if (dbg_patch)
@@ -582,9 +667,33 @@ cv::Mat KCF_Tracker::gaussian_shaped_labels(double sigma, int dim1, int dim2)
     }
 
     // rotate so that 1 is at top-left corner (see KCF paper for explanation)
-    MatDynMem rot_labels = circshift(labels, range_x[0], range_y[0]);
+    cv::Mat rot_labels = circshift(labels, range_x[0], range_y[0]);
     // sanity check, 1 at top left corner
     assert(rot_labels.at<float>(0, 0) >= 1.f - 1e-10f);
+
+    return rot_labels;
+}
+
+cv::UMat KCF_Tracker::gaussian_shaped_labels_umat(double sigma, int dim1, int dim2)
+{
+    cv::UMat labels(dim2, dim1, CV_32FC1);
+    int range_y[2] = {-dim2 / 2, dim2 - dim2 / 2};
+    int range_x[2] = {-dim1 / 2, dim1 - dim1 / 2};
+
+    double sigma_s = sigma * sigma;
+
+    for (int y = range_y[0], j = 0; y < range_y[1]; ++y, ++j) {
+        float *row_ptr = labels.getMat(cv::ACCESS_RW).ptr<float>(j);
+        double y_s = y * y;
+        for (int x = range_x[0], i = 0; x < range_x[1]; ++x, ++i) {
+            row_ptr[i] = std::exp(-0.5 * (y_s + x * x) / sigma_s); //-1/2*e^((y^2+x^2)/sigma^2)
+        }
+    }
+
+    // rotate so that 1 is at top-left corner (see KCF paper for explanation)
+    cv::UMat rot_labels = circshift(labels, range_x[0], range_y[0]);
+    // sanity check, 1 at top left corner
+    assert(rot_labels.getMat(cv::ACCESS_READ).at<float>(0, 0) >= 1.f - 1e-10f);
 
     return rot_labels;
 }
@@ -593,6 +702,70 @@ cv::Mat KCF_Tracker::circshift(const cv::Mat &patch, int x_rot, int y_rot) const
 {
     cv::Mat rot_patch(patch.size(), patch.type());
     cv::Mat tmp_x_rot(patch.size(), patch.type());
+
+    // circular rotate x-axis
+    if (x_rot < 0) {
+        // move part that does not rotate over the edge
+        cv::Range orig_range(-x_rot, patch.cols);
+        cv::Range rot_range(0, patch.cols - (-x_rot));
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+
+        // rotated part
+        orig_range = cv::Range(0, -x_rot);
+        rot_range = cv::Range(patch.cols - (-x_rot), patch.cols);
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+    } else if (x_rot > 0) {
+        // move part that does not rotate over the edge
+        cv::Range orig_range(0, patch.cols - x_rot);
+        cv::Range rot_range(x_rot, patch.cols);
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+
+        // rotated part
+        orig_range = cv::Range(patch.cols - x_rot, patch.cols);
+        rot_range = cv::Range(0, x_rot);
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+    } else { // zero rotation
+        // move part that does not rotate over the edge
+        cv::Range orig_range(0, patch.cols);
+        cv::Range rot_range(0, patch.cols);
+        patch(cv::Range::all(), orig_range).copyTo(tmp_x_rot(cv::Range::all(), rot_range));
+    }
+
+    // circular rotate y-axis
+    if (y_rot < 0) {
+        // move part that does not rotate over the edge
+        cv::Range orig_range(-y_rot, patch.rows);
+        cv::Range rot_range(0, patch.rows - (-y_rot));
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+
+        // rotated part
+        orig_range = cv::Range(0, -y_rot);
+        rot_range = cv::Range(patch.rows - (-y_rot), patch.rows);
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+    } else if (y_rot > 0) {
+        // move part that does not rotate over the edge
+        cv::Range orig_range(0, patch.rows - y_rot);
+        cv::Range rot_range(y_rot, patch.rows);
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+
+        // rotated part
+        orig_range = cv::Range(patch.rows - y_rot, patch.rows);
+        rot_range = cv::Range(0, y_rot);
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+    } else { // zero rotation
+        // move part that does not rotate over the edge
+        cv::Range orig_range(0, patch.rows);
+        cv::Range rot_range(0, patch.rows);
+        tmp_x_rot(orig_range, cv::Range::all()).copyTo(rot_patch(rot_range, cv::Range::all()));
+    }
+
+    return rot_patch;
+}
+
+cv::UMat KCF_Tracker::circshift(const cv::UMat &patch, int x_rot, int y_rot) const
+{
+    cv::UMat rot_patch(patch.size(), patch.type());
+    cv::UMat tmp_x_rot(patch.size(), patch.type());
 
     // circular rotate x-axis
     if (x_rot < 0) {
@@ -734,42 +907,52 @@ cv::Mat KCF_Tracker::get_subwindow(const cv::Mat &input, int cx, int cy, int wid
     return patch;
 }
 
-void KCF_Tracker::GaussianCorrelation::operator()(ComplexMat &result, const ComplexMat &xf, const ComplexMat &yf,
+void KCF_Tracker::GaussianCorrelation::operator()(cv::UMat &result, cv::UMat &xf, cv::UMat &yf,
                                                   double sigma, bool auto_correlation, const KCF_Tracker &kcf)
 {
     TRACE("");
     DEBUG_PRINTM(xf);
-    DEBUG_PRINT(xf_sqr_norm.num_elem);
-    xf.sqr_norm(xf_sqr_norm);
-    for (uint s = 0; s < xf.n_scales; ++s)
-        DEBUG_PRINT(xf_sqr_norm[s]);
+    
+    xf_sqr_norm = (cv::norm(xf , cv::NORM_L2SQR) / static_cast<double>(xf.rows * xf.cols));
+    DEBUG_PRINT(xf_sqr_norm);
+    
     if (auto_correlation) {
         yf_sqr_norm = xf_sqr_norm;
     } else {
         DEBUG_PRINTM(yf);
-        yf.sqr_norm(yf_sqr_norm);
+        yf_sqr_norm = (cv::norm(yf , cv::NORM_L2SQR) / static_cast<double>(yf.rows * yf.cols));
     }
-    for (uint s = 0; s < yf.n_scales; ++s)
-        DEBUG_PRINTM(yf_sqr_norm[s]);
-    xyf = auto_correlation ? xf.sqr_mag() : xf * yf.conj(); // xf.muln(yf.conj());
+    DEBUG_PRINT(yf_sqr_norm);
+    
+    cv::UMat conjMat = MatUtil::conj(yf);   
+    xyf = auto_correlation ? MatUtil::sqr_mag(xf) : MatUtil::mul_matn_matn(xf, conjMat); // xf.muln(yf.conj());
     DEBUG_PRINTM(xyf);
-
+    
     // ifft2 and sum over 3rd dimension, we dont care about individual channels
-    ComplexMat xyf_sum = xyf.sum_over_channels();
-    DEBUG_PRINTM(xyf_sum);
+    cv::UMat xyf_sum = MatUtil::sum_over_channels(xyf);
+    DEBUG_PRINTM(xyf_sum);    
     kcf.fft.inverse(xyf_sum, ifft_res);
     DEBUG_PRINTM(ifft_res);
 
-    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / xf.n_scales));
-    for (uint i = 0; i < xf.n_scales; ++i) {
-        cv::Mat plane = ifft_res.plane(i);
-        DEBUG_PRINT(ifft_res.plane(i));
-        cv::exp(-1. / (sigma * sigma) * cv::max((xf_sqr_norm[i] + yf_sqr_norm[0] - 2 * ifft_res.plane(i))
-                * numel_xf_inv, 0), plane);
-        DEBUG_PRINTM(plane);
-    }
+    float numel_xf_inv = 1.f / (xf.cols * xf.rows * (xf.channels() / 2));
+    
+    cv::Mat ifft_res_Temp = ifft_res.getMat(cv::ACCESS_RW);    
+    cv::Mat plane = MatUtil::plane(0,ifft_res_Temp);
+    DEBUG_PRINTM(plane);
+    
+    cv::Mat matExpr;
+    cv::GMat in;
+    cv::GMat inTemp = cv::gapi::mulC(in, -2);
+    cv::GMat inTemp2 = cv::gapi::addC(inTemp, xf_sqr_norm + yf_sqr_norm);
+    cv::GMat out = cv::gapi::mulC(inTemp2, numel_xf_inv);
+    cv::GComputation getMaxArg(in, out);
+    getMaxArg.apply(plane,matExpr);
+    
+    cv::exp(-1. / (sigma * sigma) * cv::max(matExpr, 0), plane);
+    
+    DEBUG_PRINTM(plane);
 
-    kcf.fft.forward(ifft_res, result);
+    kcf.fft.forward(MatUtil::plane(0,ifft_res), result);
 }
 
 float get_response_circular(cv::Point2i &pt, cv::Mat &response)

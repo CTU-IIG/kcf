@@ -5,7 +5,6 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <cassert>
-#include "complexmat.hpp"
 
 #ifdef BIG_BATCH
 #define BIG_BATCH_MODE 1
@@ -19,10 +18,10 @@ class Fft
 {
 public:
     void init(unsigned width, unsigned height, unsigned num_of_feats, unsigned num_of_scales);
-    void set_window(const MatDynMem &window);
-    void forward(const MatScales &real_input, ComplexMat &complex_result);
-    void forward_window(MatScaleFeats &patch_feats_in, ComplexMat &complex_result, MatScaleFeats &tmp);
-    void inverse(ComplexMat &complex_input, MatScales &real_result);
+    void set_window(const cv::UMat &window);
+    void forward(const cv::UMat &real_input, cv::UMat &complex_result);
+    void forward_window(cv::UMat &patch_feats, cv::UMat &complex_result, cv::UMat &tmp);
+    void inverse(cv::UMat &complex_input, cv::UMat &real_result);
 
     static cv::Size freq_size(cv::Size space_size)
     {

@@ -6,8 +6,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
-#include "dynmem.hpp"
-#include "complexmat.hpp"
 
 #ifdef CUFFT
 #include <cufft.h>
@@ -95,9 +93,6 @@ class DbgTracer {
     };
 
     template <typename T> Printer<T> print(const T& obj) { return Printer<T>(obj); }
-    Printer<cv::Mat> print(const MatScales& obj) { return Printer<cv::Mat>(obj); }
-    Printer<cv::Mat> print(const MatFeats& obj) { return Printer<cv::Mat>(obj); }
-    Printer<cv::Mat> print(const MatScaleFeats& obj) { return Printer<cv::Mat>(obj); }
 };
 
 template <typename T>
@@ -121,6 +116,7 @@ static inline std::ostream &operator<<(std::ostream &out, const cv::MatSize &msi
 #endif
 
 std::ostream &operator<<(std::ostream &os, const DbgTracer::Printer<cv::Mat> &p);
+std::ostream &operator<<(std::ostream &os, const DbgTracer::Printer<cv::UMat> &p);
 
 #if defined(CUFFT)
 static inline std::ostream &operator<<(std::ostream &os, const cufftComplex &p)
@@ -129,8 +125,6 @@ static inline std::ostream &operator<<(std::ostream &os, const cufftComplex &p)
     return os;
 }
 #endif
-
-std::ostream &operator<<(std::ostream &os, const DbgTracer::Printer<ComplexMat> &p);
 
 extern DbgTracer __dbgTracer;
 
