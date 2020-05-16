@@ -82,6 +82,13 @@ static void set_channel(int idxFrom, int idxTo, cv::UMat &source, cv::UMat &targ
     cv::Mat convTgt = target.getMat(cv::ACCESS_RW);
     cv::mixChannels( &convSrc, 1, &convTgt, 1, from_to, 1 );
 }
+static void set_channel(int idxFrom, int idxTo, cv::Mat &source, cv::Mat &target)
+{
+    assert(idxTo < target.channels());
+    assert(idxFrom < source.channels());
+    int from_to[] = { idxFrom,idxTo };
+    cv::mixChannels( &source, 1, &target, 1, from_to, 1 );
+}
 
 /*
  * Sum of channel values for each point of input matrix 

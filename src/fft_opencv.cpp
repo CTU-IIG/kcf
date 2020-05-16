@@ -58,15 +58,15 @@ GAPI_OCV_KERNEL(GCPUDft, GDft)
             cv::Mat_< std::complex<float> > cpxCopyMat = cv::Mat_< std::complex<float> >(cpyMat);
             cv::Mat_< std::complex<float> > cpxOutMat = cv::Mat_< std::complex<float> >(out);
             cpxCopyMat.forEach([&cpxOutMat](std::complex<float> &c, const int * position) { 
-                int rowVal = *position; 
-                int colVal = *(position +1);
-                cpxOutMat.ptr<std::complex<float>>(rowVal)[colVal] = c;
+             //   int rowVal = *position; 
+             //   int colVal = *(position +1);
+                cpxOutMat.ptr<std::complex<float>>(*position)[*(position +1)] = c;
             });
         } else {
             cpyMat.forEach<float>([&out](float &c, const int * position) { 
-                int rowVal = *position; 
-                int colVal = *(position +1);
-                out.ptr<float>(rowVal)[colVal] = c;
+             //   int rowVal = *position; 
+             //   int colVal = *(position +1);
+                out.ptr<float>(*position)[*(position +1)] = c;
             });
         }
     }
@@ -134,18 +134,17 @@ void FftOpencv::forward_window(cv::UMat &feat, cv::UMat &complex_result, cv::UMa
     cv::gapi::GKernelPackage kernelPkg = cv::gapi::GKernelPackage();
     kernelPkg.include<GCPUDft>();
     
-    cv::Mat matComplex_res;
-    cv::UMat channel;
-    cv::Mat matChannel;
-    cv::UMat complex_res;
+    cv::Mat featTemp = feat.getMat(cv::ACCESS_RW);
+    cv::Mat cpxResTemp = complex_result.getMat(cv::ACCESS_RW);
+    
+    cv::Mat channel;
+    cv::Mat complex_res;
     for (uint i = 0; i < uint(feat.size[0]); ++i) {
         for (uint j = 0; j < uint(feat.size[1]); ++j) {
-            channel = MatUtil::plane(i, j, feat);
-            matChannel = channel.getMat(cv::ACCESS_RW).mul(m_window);
-            fourierFwdWin.apply(matChannel, matComplex_res, cv::compile_args(kernelPkg));
-            complex_res = matComplex_res.getUMat(cv::ACCESS_RW);
-            MatUtil::set_channel(int(0), int(2*j), complex_res, complex_result);
-            MatUtil::set_channel(int(1), int(2*j+1), complex_res, complex_result);
+            channel = MatUtil::plane(i, j, featTemp).mul(m_window);
+            fourierFwdWin.apply(channel, complex_res, cv::compile_args(kernelPkg));
+            MatUtil::set_channel(int(0), int(2*j), complex_res, cpxResTemp);
+            MatUtil::set_channel(int(1), int(2*j+1), complex_res, cpxResTemp);
         }
     }
 }
